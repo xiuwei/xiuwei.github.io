@@ -1,0 +1,247 @@
+<!doctype html><html lang=zh-Hans dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="认识 Reactive Stream，并了解它与 RxJava 和 Flow API的区别"><title>RxJava API 与 Java 9 Flow API 的区别</title>
+<link rel=canonical href=https://xiuwei.github.io/p/rxjava-vs-java-flow/><link rel=stylesheet href=/scss/style.min.abbd69b2908fdfcd5179898beaafd374514a86538d81639ddd2c58c06ae54e40.css><meta property="og:title" content="RxJava API 与 Java 9 Flow API 的区别"><meta property="og:description" content="认识 Reactive Stream，并了解它与 RxJava 和 Flow API的区别"><meta property="og:url" content="https://xiuwei.github.io/p/rxjava-vs-java-flow/"><meta property="og:site_name" content="哈皮的自言自语"><meta property="og:type" content="article"><meta property="article:section" content="Post"><meta property="article:tag" content="Java"><meta property="article:tag" content="Reactive Stream"><meta property="article:tag" content="RxJava"><meta property="article:published_time" content="2023-12-12T18:00:00+00:00"><meta property="article:modified_time" content="2023-12-12T18:00:00+00:00"><meta name=twitter:title content="RxJava API 与 Java 9 Flow API 的区别"><meta name=twitter:description content="认识 Reactive Stream，并了解它与 RxJava 和 Flow API的区别"><link rel="shortcut icon" href=/favicon.png></head><body class=article-page><script>(function(){const e="StackColorScheme";localStorage.getItem(e)||localStorage.setItem(e,"auto")})()</script><script>(function(){const t="StackColorScheme",e=localStorage.getItem(t),n=window.matchMedia("(prefers-color-scheme: dark)").matches===!0;e=="dark"||e==="auto"&&n?document.documentElement.dataset.scheme="dark":document.documentElement.dataset.scheme="light"})()</script><div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky"><button class="hamburger hamburger--spin" type=button id=toggle-menu aria-label=切换菜单>
+<span class=hamburger-box><span class=hamburger-inner></span></span></button><header><figure class=site-avatar><a href=/><img src="https://gravatar.com/userimage/178634647/440594be28e5b5228647a64f6d8fec31.jpeg?size=256" width=300 height=300 class=site-logo loading=lazy alt=Avatar>
+</a><span class=emoji>🍥</span></figure><div class=site-meta><h1 class=site-name><a href=/>哈皮的自言自语</a></h1><h2 class=site-description>Entities should not be multiplied unnecessarily.</h2></div></header><ol class=menu id=main-menu><li><a href=/><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-home" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="5 12 3 12 12 3 21 12 19 12"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/><path d="M9 21v-6a2 2 0 012-2h2a2 2 0 012 2v6"/></svg><span>主页</span></a></li><li><a href=/archives/><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><rect x="3" y="4" width="18" height="4" rx="2"/><path d="M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg><span>归档</span></a></li><li><a href=/search/><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="10" cy="10" r="7"/><line x1="21" y1="21" x2="15" y2="15"/></svg><span>检索</span></a></li><li><a href=/links/><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-link" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><path d="M10 14a3.5 3.5.0 005 0l4-4a3.5 3.5.0 00-5-5l-.5.5"/><path d="M14 10a3.5 3.5.0 00-5 0l-4 4a3.5 3.5.0 005 5l.5-.5"/></svg><span>Links</span></a></li><div class=menu-bottom-section><li id=dark-mode-toggle><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="8" cy="12" r="2"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="16" cy="12" r="2"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg><span>暗色模式</span></li></div></ol></aside><aside class="sidebar right-sidebar sticky"><section class="widget archives"><div class=widget-icon><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="19" y2="15"/><line x1="11" y1="4" x2="7" y2="20"/><line x1="17" y1="4" x2="13" y2="20"/></svg></div><h2 class="widget-title section-title">目录</h2><div class=widget--toc><nav id=TableOfContents><ol><li><a href=#1概述>1.概述</a></li><li><a href=#2reactive-stream-是什么鬼>2.Reactive Stream 是什么鬼?</a></li><li><a href=#3用例>3.用例</a></li><li><a href=#4flow-api-的实现>4.Flow API 的实现</a></li><li><a href=#5使用-rxjava-实现>5.使用 RxJava 实现</a></li><li><a href=#6rxjava-和-flow-api-的比较>6.RxJava 和 Flow API 的比较</a></li><li><a href=#7为什么使用-flow-api>7.为什么使用 Flow API？</a></li></ol></nav></div></section></aside><main class="main full-width"><article class=main-article><header class=article-header><div class=article-details><header class=article-category><a href=/categories/java/>Java
+</a><a href=/categories/reactive/>Reactive</a></header><div class=article-title-wrapper><h2 class=article-title><a href=/p/rxjava-vs-java-flow/>RxJava API 与 Java 9 Flow API 的区别</a></h2><h3 class=article-subtitle>认识 Reactive Stream，并了解它与 RxJava 和 Flow API的区别</h3></div><footer class=article-time><div><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><path d="M11.795 21H5a2 2 0 01-2-2V7a2 2 0 012-2h12a2 2 0 012 2v4"/><circle cx="18" cy="18" r="4"/><path d="M15 3v4"/><path d="M7 3v4"/><path d="M3 11h16"/><path d="M18 16.496V18l1 1"/></svg><time class=article-time--published>Dec 12, 2023</time></div><div><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg><time class=article-time--reading>阅读时长: 5 分钟</time></div></footer></div></header><section class=article-content><h2 id=1概述>1.概述</h2><p>Java Flow API 是在 Java 9 中作为 Reactive Stream 规范的实现引入的。</p><p>在这篇文章里，我们首先研究 Reactive Stream，然后再了解它与 RxJava 和 Flow API的区别。</p><h2 id=2reactive-stream-是什么鬼>2.Reactive Stream 是什么鬼?</h2><p><a class=link href=https://www.reactive-streams.org/ target=_blank rel=noopener>Reactive Manifesto</a> 引入了 Reactive Streams 来指定具有非阻塞背压的异步流处理的标准。</p><p>Reactive Stream 规范的范围是定义<strong>一组最小的接口</strong>来实现这些目标：</p><ul><li><strong><a class=link href=http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Publisher.html target=_blank rel=noopener>org.reactivestreams.Publisher</a></strong> 是一个数据提供者，根据订阅者的需求向订阅者发布数据</li><li><strong><a class=link href=http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Subscriber.html target=_blank rel=noopener>org.reactivestreams.Subscriber</a></strong> 是数据的消费者——订阅发布者后可以接收数据</li><li><strong><a class=link href=http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Subscription.html target=_blank rel=noopener>org.reactivestreams.Subscription</a></strong> 当发布者接受订阅者时创建</li><li><strong><a class=link href=http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Processor.html target=_blank rel=noopener>org.reactivestreams.Processor</a></strong> 既是订阅者又是发布者 - 它订阅发布者，处理数据，然后将处理后的数据传递给订阅者</li></ul><p>Flow API源自规范。 RxJava 领先于它，但从 2.0 开始，RxJava 也支持该规范。</p><p>我们将深入探讨两者，但首先让我们看一个实际用例。</p><h2 id=3用例>3.用例</h2><p>我们用抖音的网红直播作为用例。</p><p>与抖音点播不同，视频直播不依赖于观众，因此，网红按自己的节奏发布视频流，而观众需要有适合的网络带宽来适应网红的直播流推送。</p><p>我们将用最简洁的代码，演示网红、观众、直播流之间的协作，并分别演示 Flow API 和 RxJava 是如何实现的。</p><p>让我们先定义“直播流“ DouyinStream 的代码，作为我们的数据项。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>DouyinStream</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 抖音编号
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>private</span><span class=w> </span><span class=kt>long</span><span class=w> </span><span class=n>number</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 视频数据
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>private</span><span class=w> </span><span class=kt>byte</span><span class=o>[]</span><span class=w> </span><span class=n>data</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=nf>DouyinStream</span><span class=p>(</span><span class=kt>long</span><span class=w> </span><span class=n>number</span><span class=p>,</span><span class=w> </span><span class=kt>byte</span><span class=o>[]</span><span class=w> </span><span class=n>data</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>number</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>number</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>data</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>data</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=nf>DouyinStream</span><span class=p>(</span><span class=kt>long</span><span class=w> </span><span class=n>number</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>number</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>number</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=nf>DouyinStream</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>long</span><span class=w> </span><span class=nf>getNumber</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=n>number</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>setNumber</span><span class=p>(</span><span class=kt>long</span><span class=w> </span><span class=n>number</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>number</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>number</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>byte</span><span class=o>[]</span><span class=w> </span><span class=nf>getData</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=n>data</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>setData</span><span class=p>(</span><span class=kt>byte</span><span class=o>[]</span><span class=w> </span><span class=n>data</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>data</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>data</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h2 id=4flow-api-的实现>4.Flow API 的实现</h2><p>JDK 9 中的 Flow API 对应于 Reactive Streams 规范。使用 Flow API，如果应用程序最初请求 N 个项目，则发布者最多将 N 个项目推送给订阅者。</p><p>Flow API 接口均位于 java.util.concurrent.Flow 接口中。它们在语义上等同于各自的响应式流。</p><p>让我们实现“网红” DouyinInfluencer 作为 DouyinStream 的发布者。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>DouyinInfluencer</span><span class=w> </span><span class=kd>extends</span><span class=w> </span><span class=n>SubmissionPublisher</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=nf>DouyinInfluencer</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=kd>super</span><span class=p>(</span><span class=n>Executors</span><span class=p>.</span><span class=na>newSingleThreadExecutor</span><span class=p>(),</span><span class=n>5</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>我们从 SubmissionPublisher 扩展了 DouyinInfluencer，而不是直接实现 Flow::Publisher。 SubmissionPublisher 是 Fl​​ow::Publisher 的 JDK 实现，用于与订阅者进行异步通信，因此它让我们的 DouyinInfluencer 按照自己的节奏发送视频流。</p><p>此外，它对于背压和缓冲区处理也很有帮助，因为当调用 SubmissionPublisher::subscribe 时，它​​会创建 BufferedSubscription 的实例，然后将新订阅添加到其订阅链中。 BufferedSubscription 可以缓冲已发布的项目，最高可达 SubmissionPublisher#maxBufferCapacity。</p><p>现在让我们定义“观众” VideoPlayer，它消耗 VideoFrame 流。因此它必须实现 Flow::Subscriber。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>DouyinAudience</span><span class=w> </span><span class=kd>implements</span><span class=w> </span><span class=n>Flow</span><span class=p>.</span><span class=na>Subscriber</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>Flow</span><span class=p>.</span><span class=na>Subscription</span><span class=w> </span><span class=n>subscription</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=kc>null</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>onSubscribe</span><span class=p>(</span><span class=n>Flow</span><span class=p>.</span><span class=na>Subscription</span><span class=w> </span><span class=n>subscription</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>this</span><span class=p>.</span><span class=na>subscription</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>subscription</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>subscription</span><span class=p>.</span><span class=na>request</span><span class=p>(</span><span class=n>1</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>onNext</span><span class=p>(</span><span class=n>DouyinStream</span><span class=w> </span><span class=n>item</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>System</span><span class=p>.</span><span class=na>out</span><span class=p>.</span><span class=na>println</span><span class=p>(</span><span class=s>&#34;接收 直播流（id)）：&#34;</span><span class=o>+</span><span class=n>item</span><span class=p>.</span><span class=na>getNumber</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>subscription</span><span class=p>.</span><span class=na>request</span><span class=p>(</span><span class=n>1</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>onError</span><span class=p>(</span><span class=n>Throwable</span><span class=w> </span><span class=n>throwable</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>throwable</span><span class=p>.</span><span class=na>printStackTrace</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>onComplete</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>System</span><span class=p>.</span><span class=na>out</span><span class=p>.</span><span class=na>println</span><span class=p>(</span><span class=s>&#34;播放完了！&#34;</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>DouyinAudience订阅DouyinInfluencer，订阅成功后调用DouyinAudience::onSubscribe方法，请求一帧。 DouyinAudience::onNext 接收帧并请求新帧。请求的帧的数量取决于用例和订阅者实现。</p><p>最后，我们把直播场景串起来：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=k>try</span><span class=w> </span><span class=p>(</span><span class=n>DouyinInfluencer</span><span class=w> </span><span class=n>influencer</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>DouyinInfluencer</span><span class=p>())</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>influencer</span><span class=p>.</span><span class=na>subscribe</span><span class=p>(</span><span class=k>new</span><span class=w> </span><span class=n>DouyinAudience</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>ScheduledExecutorService</span><span class=w> </span><span class=n>executorService</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>Executors</span><span class=p>.</span><span class=na>newScheduledThreadPool</span><span class=p>(</span><span class=n>1</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>AtomicLong</span><span class=w> </span><span class=n>douyinNumber</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>AtomicLong</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>executorService</span><span class=p>.</span><span class=na>scheduleAtFixedRate</span><span class=p>(()</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>influencer</span><span class=p>.</span><span class=na>offer</span><span class=p>(</span><span class=k>new</span><span class=w> </span><span class=n>DouyinStream</span><span class=p>(</span><span class=n>douyinNumber</span><span class=p>.</span><span class=na>incrementAndGet</span><span class=p>()),(</span><span class=n>subscriber</span><span class=p>,</span><span class=w> </span><span class=n>douyinStream</span><span class=p>)</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>subscriber</span><span class=p>.</span><span class=na>onError</span><span class=p>(</span><span class=k>new</span><span class=w> </span><span class=n>RuntimeException</span><span class=p>(</span><span class=s>&#34;直播流 id： &#34;</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>douyinStream</span><span class=p>.</span><span class=na>getNumber</span><span class=p>()</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=o>+</span><span class=w> </span><span class=s>&#34; 因触发背压被丢弃！&#34;</span><span class=p>));</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>return</span><span class=w> </span><span class=kc>true</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>});</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>},</span><span class=w> </span><span class=n>0</span><span class=p>,</span><span class=w> </span><span class=n>1</span><span class=p>,</span><span class=w> </span><span class=n>TimeUnit</span><span class=p>.</span><span class=na>MILLISECONDS</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>Thread</span><span class=p>.</span><span class=na>sleep</span><span class=p>(</span><span class=n>3000</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w> </span><span class=k>catch</span><span class=w> </span><span class=p>(</span><span class=n>Exception</span><span class=w> </span><span class=n>e</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>throw</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>RuntimeException</span><span class=p>(</span><span class=n>e</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h2 id=5使用-rxjava-实现>5.使用 RxJava 实现</h2><p>RxJava 的最新版本是 3.x。 RxJava 从 2.x 版本开始就支持 Reactive Streams 及其 Flowable 基类，但它比 Reactive Streams 更重要，它有几个基类，如 Flowable、Observable、Single、Completable。</p><p>Flowable 作为反应流合规组件是具有反压处理的 0 到 N 项的流。 Flowable 从 Reactive Streams 扩展了 Publisher。因此，许多 RxJava 运算符直接接受 Publisher 并允许与其他 Reactive Streams 实现直接互操作。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=c1>//step1:制作一个无限延迟流的视频流生成器</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=n>Stream</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=w> </span><span class=n>videoStream</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>Stream</span><span class=p>.</span><span class=na>iterate</span><span class=p>(</span><span class=k>new</span><span class=w> </span><span class=n>DouyinStream</span><span class=p>(</span><span class=n>0</span><span class=p>),</span><span class=w> </span><span class=n>douyinStream</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>return</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>DouyinStream</span><span class=p>(</span><span class=n>douyinStream</span><span class=p>.</span><span class=na>getNumber</span><span class=p>()</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>1</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>});</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>//step2:创建一个抖音网红实例，并设置其被订阅后的视频流数据推送逻辑</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=n>Flowable</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=w> </span><span class=n>douyinInfluencer</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>Flowable</span><span class=p>.</span><span class=na>create</span><span class=p>(</span><span class=k>new</span><span class=w> </span><span class=n>FlowableOnSubscribe</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>subscribe</span><span class=p>(</span><span class=nd>@NonNull</span><span class=w> </span><span class=n>FlowableEmitter</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=w> </span><span class=n>emitter</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>InterruptedException</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>Iterator</span><span class=o>&lt;</span><span class=n>DouyinStream</span><span class=o>&gt;</span><span class=w> </span><span class=n>iterator</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>videoStream</span><span class=p>.</span><span class=na>iterator</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>while</span><span class=w> </span><span class=p>(</span><span class=n>iterator</span><span class=p>.</span><span class=na>hasNext</span><span class=p>())</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>emitter</span><span class=p>.</span><span class=na>onNext</span><span class=p>(</span><span class=n>iterator</span><span class=p>.</span><span class=na>next</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>Thread</span><span class=p>.</span><span class=na>sleep</span><span class=p>(</span><span class=n>500</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>},</span><span class=w> </span><span class=n>BackpressureStrategy</span><span class=p>.</span><span class=na>ERROR</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=c1>//setp3:编写观众点播网红直播，并设置观众对视频流数据的处理逻辑</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=n>douyinInfluencer</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>.</span><span class=na>observeOn</span><span class=p>(</span><span class=n>Schedulers</span><span class=p>.</span><span class=na>from</span><span class=p>(</span><span class=n>Executors</span><span class=p>.</span><span class=na>newSingleThreadExecutor</span><span class=p>()))</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>.</span><span class=na>onBackpressureDrop</span><span class=p>(</span><span class=n>douyinStream</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>System</span><span class=p>.</span><span class=na>out</span><span class=p>.</span><span class=na>println</span><span class=p>(</span><span class=s>&#34;丢弃第&#34;</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>douyinStream</span><span class=p>.</span><span class=na>getNumber</span><span class=p>()</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=s>&#34;帧视频流&#34;</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>})</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>.</span><span class=na>subscribe</span><span class=p>(</span><span class=n>item</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>System</span><span class=p>.</span><span class=na>out</span><span class=p>.</span><span class=na>println</span><span class=p>(</span><span class=s>&#34;播放 第&#34;</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=n>item</span><span class=p>.</span><span class=na>getNumber</span><span class=p>()</span><span class=w> </span><span class=o>+</span><span class=w> </span><span class=s>&#34;帧视频流&#34;</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>Thread</span><span class=p>.</span><span class=na>sleep</span><span class=p>(</span><span class=n>500</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>});</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h2 id=6rxjava-和-flow-api-的比较>6.RxJava 和 Flow API 的比较</h2><p>即使在这两个简单的实现中，我们也可以看到 RxJava 的 API 是多么丰富，特别是在缓冲区管理、错误处理和反压策略方面。它以其流畅的 API 为我们提供了更多的选择和更少的代码行。现在让我们考虑更复杂的情况。</p><p>假设我们的播放器在没有编解码器的情况下无法显示视频帧。因此，对于 Flow API，我们需要实现一个处理器来模拟编解码器并位于服务器和播放器之间。使用 RxJava，我们可以使用 Flowable::flatMap 或 Flowable::map 来完成。</p><p>或者让我们想象一下，我们的播放器还将播放实时翻译音频，因此我们必须合并来自不同发布商的视频和音频流。有了RxJava，我们可以使用Flowable::combineLatest，但是有了Flow API，这并不是一件容易的事。</p><p>尽管如此，可以编写一个自定义处理器来订阅两个流并将组合数据发送到我们的视频播放器。然而，实施起来却很令人头疼。</p><h2 id=7为什么使用-flow-api>7.为什么使用 Flow API？</h2><p>说到这里，我们可能会有一个疑问，Flow API 背后的理念是什么？</p><p>如果我们在JDK中搜索Flow API的用法，我们可以在java.net.http和jdk.internal.net.http中找到一些东西。</p><p>此外，我们可以在reactor项目或 reactive stream 包中找到适配器。例如，org.reactivestreams.FlowAdapters 具有将 Flow API 接口转换为 Reactive Stream 接口的方法，反之亦然。因此，它有助于 Flow API 和具有反应式流支持的库之间的互操作性。</p><p><strong>所有这些事实都有助于我们理解 Flow API 的目的：它被创建为 JDK 中的一组反应式规范接口，无需依赖第三方。</strong> 此外，Java 期望 Flow API 被接受为反应式规范的标准接口，并在 JDK 或其他为中间件和实用程序实现反应式规范的基于 Java 的库中使用。</p></section><footer class=article-footer><section class=article-tags><a href=/tags/java/>Java</a>
+<a href=/tags/reactive-stream/>Reactive Stream</a>
+<a href=/tags/rxjava/>RxJava</a></section><section class=article-copyright><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"/><circle cx="12" cy="12" r="9"/><path d="M14.5 9a3.5 4 0 100 6"/></svg><span>Licensed under CC BY-NC-SA 4.0</span></section></footer></article><aside class=related-content--wrapper><h2 class=section-title>相关文章</h2><div class=related-content><div class="flex article-list--tile"><article><a href=/p/java-9-reactive-streams/><div class=article-details><h2 class=article-title>Java 9 Reactive Streams</h2></div></a></article><article><a href=/p/java-8-functional/><div class=article-details><h2 class=article-title>Java 8 函数式接口初识</h2></div></a></article></div></div></aside><div class=disqus-container><div id=disqus_thread></div><script>window.disqus_config=function(){},function(){if(["localhost","127.0.0.1"].indexOf(window.location.hostname)!=-1){document.getElementById("disqus_thread").innerHTML="Disqus comments not available by default when the website is previewed locally.";return}var t=document,e=t.createElement("script");e.async=!0,e.src="//xiuwei.disqus.com/embed.js",e.setAttribute("data-timestamp",+new Date),(t.head||t.body).appendChild(e)}()</script><noscript>Please enable JavaScript to view the <a href=https://disqus.com/?ref_noscript>comments powered by Disqus.</a></noscript><a href=https://disqus.com class=dsq-brlink>comments powered by <span class=logo-disqus>Disqus</span></a></div><style>.disqus-container{background-color:var(--card-background);border-radius:var(--card-border-radius);box-shadow:var(--shadow-l1);padding:var(--card-padding)}</style><script>window.addEventListener("onColorSchemeChange",e=>{typeof DISQUS=="object"&&DISQUS.reset({reload:!0})})</script><footer class=site-footer><section class=copyright>&copy;
+2023 哈皮的自言自语</section><section class=powerby>Built with <a href=https://gohugo.io/ target=_blank rel=noopener>Hugo</a><br>主题 <b><a href=https://github.com/CaiJimmy/hugo-theme-stack target=_blank rel=noopener data-version=3.21.0>Stack</a></b> 由 <a href=https://jimmycai.com target=_blank rel=noopener>Jimmy</a> 设计</section></footer><div class=pswp tabindex=-1 role=dialog aria-hidden=true><div class=pswp__bg></div><div class=pswp__scroll-wrap><div class=pswp__container><div class=pswp__item></div><div class=pswp__item></div><div class=pswp__item></div></div><div class="pswp__ui pswp__ui--hidden"><div class=pswp__top-bar><div class=pswp__counter></div><button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+<button class="pswp__button pswp__button--share" title=Share></button>
+<button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+<button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button><div class=pswp__preloader><div class=pswp__preloader__icn><div class=pswp__preloader__cut><div class=pswp__preloader__donut></div></div></div></div></div><div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap"><div class=pswp__share-tooltip></div></div><button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+</button>
+<button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)"></button><div class=pswp__caption><div class=pswp__caption__center></div></div></div></div></div><script src=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo=" crossorigin=anonymous defer></script><script src=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU=" crossorigin=anonymous defer></script><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css crossorigin=anonymous><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css crossorigin=anonymous></main></div><script src=https://cdn.jsdelivr.net/npm/node-vibrant@3.1.6/dist/vibrant.min.js integrity="sha256-awcR2jno4kI5X0zL8ex0vi2z+KMkF24hUW8WePSA9HM=" crossorigin=anonymous></script><script type=text/javascript src=/ts/main.js defer></script><script>(function(){const e=document.createElement("link");e.href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap",e.type="text/css",e.rel="stylesheet",document.head.appendChild(e)})()</script></body></html>
