@@ -2,7 +2,7 @@
 title: RxJava API 与 Java 9 Flow API 的区别
 description: 认识 Reactive Stream，并了解它与 RxJava 和 Flow API的区别
 slug: rxjava-vs-java-flow
-date: 2023-12-12 18:00:00+0000
+date: 2021-12-12 18:00:00+0000
 author: baeldung
 #image: cover-java.jpg
 categories:

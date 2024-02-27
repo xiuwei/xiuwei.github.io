@@ -2,7 +2,7 @@
 title: Spring Cloud应用如何平滑迁移至IPv6?
 description: 介绍Spring Cloud应用如何平滑迁移至IPv6
 slug: ip-protocal-migration
-date: 2023-12-03 12:00:00+0000
+date: 2023-01-03 12:00:00+0000
 author: 铖朴
 image: cover.jpg
 categories:

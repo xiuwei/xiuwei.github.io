@@ -2,7 +2,7 @@
 title: Java 8 函数式接口初识
 description: 介绍 Java 8 java.util.function 包下的相关类的用途和基本用法
 slug: java-8-functional
-date: 2023-12-18 19:00:00+0000
+date: 2020-12-18 19:00:00+0000
 #image: cover-java.jpg
 categories:
     - Java
