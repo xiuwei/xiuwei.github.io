@@ -19,8 +19,8 @@ subtitle = "Entities should not be multiplied unnecessarily."
 [sidebar.avatar]
 enabled = true
 local = false
-src = "https://gravatar.com/userimage/178634647/440594be28e5b5228647a64f6d8fec31.jpeg?size=256"
-#src = "img/avatar.png"
+src = "https://gravatar.com/userimage/178634647/097c1d037a10ea091f0a4577b7bb4ff6.jpeg?size=256"
+#src = "img/avatar.jpeg"
 
 [article]
 math = false
