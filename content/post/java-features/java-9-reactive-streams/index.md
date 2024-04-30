@@ -25,12 +25,12 @@ Reactive Streams 是具有非阻塞背压的异步流处理标准。该规范在
 
 为了构建 *Flow* ，我们可以使用三个主要抽象并将它们组合成异步处理逻辑。
 
-**每个 *Flow* 都需要处理 *Publisher* 实例向其发布的事件；** 发布者有一种方法——subscribe()。
+**每个 *Flow* 都需要处理 *Publisher* 实例向其发布的事件；** Publisher 有一种方法——subscribe()。
 
 **消息的接收者需要实现 *Subscriber* 接口。** 通常，这是每个流处理的结束，因为它的实例不会进一步发送消息。
-我们可以将订阅者视为一个接收器。它有四个需要重写的方法 - *onSubscribe()*、*onNext()*、*onError()* 和 *onComplete()*。我们将在下一节中讨论这些内容。
+我们可以将Subscriber 视为一个接收器。它有四个需要重写的方法 - *onSubscribe()*、*onNext()*、*onError()* 和 *onComplete()*。我们将在下一节中讨论这些内容。
 
-**如果我们想转换传入的消息并将其进一步传递给下一个*Subscriber*，我们需要实现 *Processor* 接口。** 它既充当订阅者，因为它接收消息，又充当发布者，因为它处理这些消息并将其发送以进行进一步处理。
+**如果我们想转换传入的消息并将其进一步传递给下一个*Subscriber*，我们需要实现 *Processor* 接口。** 它既充当 Subscriber ，因为它接收消息，又充当 Publisher ，因为它处理这些消息并将其发送以进行进一步处理。
 
 ## 3.发布和消费消息
 
@@ -56,7 +56,7 @@ public class MySubscriber<T> implements Flow.Subscriber<T> {
 
 我们还初始化了一个空的 ConsumerElements 列表，它将在测试中使用。
 
-现在，我们需要实现 Subscriber 接口的其余方法。这里的主要方法是 onNext() – 每当Publisher发布新消息时都会调用该方法：
+现在，我们需要实现 Subscriber 接口的其余方法。这里的主要方法是 onNext() – 每当 Publisher 发布新消息时都会调用该方法：
 
 ```java
 @Override
@@ -67,9 +67,9 @@ public void onNext(T item) {
 }
 ```
 
-请注意，当我们在 onSubscribe() 方法中启动订阅并处理消息时，我们需要调用订阅上的 request() 方法来表明当前Subscriber已准备好消费更多消息。
+请注意，当我们在 onSubscribe() 方法中启动订阅并处理消息时，我们需要调用订阅上的 request() 方法来表明当前 Subscriber 已准备好消费更多消息。
 
-最后，我们需要实现 onError() ——每当处理过程中抛出异常时就会调用它，以及 onComplete() ——当Publisher关闭时调用：
+最后，我们需要实现 onError() ——每当处理过程中抛出异常时就会调用它，以及 onComplete() ——当 Publisher 关闭时调用：
 
 ```java
 @Override
@@ -83,9 +83,10 @@ public void onComplete() {
 }
 ```
 
-让我们为处理流程编写一个测试。我们将使用 SubmissionPublisher 类——一个来自 java.util.concurrent 的构造——它实现了 Publisher 接口。
+让我们为处理流程编写一个测试。我们将使用 SubmissionPublisher 类——一个来自 java.util.concurrent 的构造——它实现了
+ Publisher 接口。
 
-我们将向Publisher提交 N 个元素——我们的最终Subscriber将收到这些元素：
+我们将向 Publisher 提交 N 个元素——我们的最终 Subscriber 将收到这些元素：
 
 ```java
 @Test
@@ -108,7 +109,7 @@ public void whenSubscribeToIt_thenShouldConsumeAll()
 }
 ```
 
-请注意，我们正在 EndSubscriber 实例上调用 close() 方法。它将在给定发布者的每个订阅者上调用下面的 onComplete() 回调。
+请注意，我们正在 EndSubscriber 实例上调用 close() 方法。它将在给定Publisher 的每个 Subscriber 上调用下面的 onComplete() 回调。
 
 运行该程序将产生以下输出：
 
@@ -195,7 +196,7 @@ public void whenSubscribeAndTransformElements_thenShouldConsumeAll()
 ```
 请注意，调用基础 Publisher 上的 close() 方法将导致调用 TransformProcessor 上的 onComplete() 方法。
 
-请记住，处理链中的所有发布者都需要以这种方式关闭。
+请记住，处理链中的所有 Publisher 都需要以这种方式关闭。
 
 ## 5.使用 Subscription 控制消息取值
 
