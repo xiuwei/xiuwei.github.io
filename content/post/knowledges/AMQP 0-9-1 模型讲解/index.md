@@ -8,7 +8,7 @@ categories:
     - Knowleges
 tags:
     - AMQP
-weight: 1  
+#weight: 1  
 ---
 
 ## AMQP 0-9-1 和 AMQP 模型高阶概述

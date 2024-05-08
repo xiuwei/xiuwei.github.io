@@ -11,7 +11,7 @@ tags:
     - IPv6
     - IP协议栈平滑迁移
     - Spring Cloud
-weight: 1       # You can add weight to some posts to override the default sorting (date descending)
+#weight: 1       # You can add weight to some posts to override the default sorting (date descending)
 ---
 
 ## 背景

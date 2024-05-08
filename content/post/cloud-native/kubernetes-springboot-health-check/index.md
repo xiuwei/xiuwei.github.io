@@ -12,7 +12,7 @@ tags:
     - Kubernetes
     - Spring Boot
     - 健康检查
-weight: 1  
+#weight: 1  
 ---
 
 ## 1. 引言

@@ -9,7 +9,7 @@ categories:
 tags:
     - Gossip
     - 分布式一致性
-weight: 1  
+#weight: 1  
 ---
 
 ## 引言

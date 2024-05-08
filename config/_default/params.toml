@@ -25,6 +25,7 @@ src = "img/avatar.jpeg"
 [article]
 math = false
 readingTime = true
+toc = true
 
 [article.license]
 enabled = false
@@ -33,12 +34,6 @@ default = "Licensed under CC BY-NC-SA 4.0"
 ## Widgets
 [[widgets.homepage]]
 type = "search"
-
-[[widgets.homepage]]
-type = "archives"
-
-[widgets.homepage.params]
-limit = 5
 
 [[widgets.homepage]]
 type = "categories"
@@ -52,11 +47,17 @@ type = "tag-cloud"
 [widgets.homepage.params]
 limit = 10
 
+[[widgets.homepage]]
+type = "archives"
+
+[widgets.homepage.params]
+limit = 5
+
 [[widgets.page]]
 type = "toc"
 
 [opengraph.twitter]
-site = ""
+site = "@Willie_Lau"
 card = "summary_large_image"
 
 [defaultImage.opengraph]

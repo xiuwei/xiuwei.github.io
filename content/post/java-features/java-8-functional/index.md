@@ -9,7 +9,7 @@ categories:
 tags:
     - Java
     - Functional
-weight: 1  
+#weight: 1  
 ---
 
 ## 1. 概述

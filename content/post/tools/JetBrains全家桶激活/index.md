@@ -9,7 +9,7 @@ categories:
 tags:
     - JetBrains IDEA 2024
     - JetBrains全家桶
-weight: 1  
+#weight: 1  
 ---
 
 ## 0. 前言
