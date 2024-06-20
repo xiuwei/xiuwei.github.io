@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Logs on 哈皮的自言自语</title><link>https://xiuwei.github.io/tags/logs/</link><description>Recent content in Logs on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Tue, 02 Apr 2024 19:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/tags/logs/index.xml" rel="self" type="application/rss+xml"/><item><title>日志规范</title><link>https://xiuwei.github.io/p/log-specification/</link><pubDate>Tue, 02 Apr 2024 19:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/log-specification/</guid><description>&lt;img src="https://xiuwei.github.io/p/log-specification/cover.jpg" alt="Featured image of post 日志规范" />&lt;h2 id="前言">
+&lt;a href="#%e5%89%8d%e8%a8%80">#&lt;/a>
+前言
+&lt;/h2>&lt;p>如果在阅读日志时，你遇到以下问题，说明你的日志打印需要规范起来：&lt;/p>
+&lt;ul>
+&lt;li>过多或冗余的日志，干扰排障：有时候，系统可能会记录过多的日志信息，包括一些无关紧要的或冗余的信息。这会导致日志文件过大，不易于查找和分析关键的日志记录；&lt;/li>
+&lt;li>&lt;strong>缺乏一致性和标准化：&lt;/strong> 在多个模块或组件中，日志格式和结构可能不一致，导致日志的解析和分析困难。缺乏统一的标准化规范，使得日志的可读性和可维护性下降；&lt;/li>
+&lt;li>缺乏上下文信息：打印日志时，只把原始的错误打印出来，没有补充打印上下文信息，例如：请求参数、关键变量值等，导致排障困难，需要重新复现；&lt;/li>
+&lt;li>同一个错误层层打印：例如在 Go 简洁架构中，同一个错误日志分别在 Use Case 层和 Service 层分别打印，导致在排障时带来冗余日志干扰，还会导致程序性能下降、浪费存储空间等；&lt;/li>
+&lt;li>根因丢失，无法快速定位故障点：有时候，错误日志在向上传递过程中，如果做了包装，要附带一些信息，最原始的报错日志可能就会丢失，导致很难定位出错误根因。&lt;/li>
+&lt;/ul>
+&lt;p>日志规范是为了提高日志的可读性、可维护性和可搜索性而制定的一系列规则和约定。将日志打印规范化，可以带来以下好处：&lt;/p>
+&lt;ul>
+&lt;li>可读性：日志规范可以定义日志的格式、结构和语义，使日志信息更易于理解和解读。统一的日志格式可以让开发人员、运维人员和其他团队成员更容易阅读和理解日志，从而更快地定位和解决问题；&lt;/li>
+&lt;li>可维护性：日志规范可以定义日志的级别、分类和命名规则，使日志更易于管理和维护。通过规范化的日志级别和分类，可以更好地组织和过滤日志，只关注关键的日志信息，减少冗余和无用的日志记录；&lt;/li>
+&lt;li>可搜索性：日志规范可以定义日志的关键字、标签和结构，使日志更易于搜索和过滤。通过定义一致的日志结构和关键字，可以使用日志分析工具或搜索引擎来快速搜索和过滤日志，以便查找特定的事件、错误或异常；&lt;/li>
+&lt;li>故障排查：日志规范可以帮助定位和排查故障。规范的日志格式和结构可以提供更多的上下文信息，包括时间戳、请求参数、异常堆栈等，有助于分析和理解故障现象，加快故障排查的速度和准确性；&lt;/li>
+&lt;li>性能优化：日志规范可以帮助识别和优化性能问题。通过规范化的日志记录和度量指标，可以更好地监控和分析系统的性能表现，发现潜在的性能瓶颈和优化机会。&lt;/li>
+&lt;/ul>
+&lt;p>可以看到，日志规范是提高日志质量和效用的重要工具。通过制定和遵守日志规范，可以提升团队协作效率，加快故障排查和问题解决的速度，提高系统的可靠性和性能。&lt;/p>
+&lt;p>本文就来介绍下日志记录需要遵循的规范。这些日志规范分为以下 2 类：&lt;/p>
+&lt;ul>
+&lt;li>必须遵循的：这类规范是所有组件记录日志时都要遵循的规范；&lt;/li>
+&lt;li>建议遵循的：这些规范是根据需要选择性需要遵循的规范。&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志打印规范">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%89%93%e5%8d%b0%e8%a7%84%e8%8c%83">#&lt;/a>
+日志打印规范
+&lt;/h2>&lt;h3 id="强制必须遵循的规范">
+&lt;a href="#%e5%bc%ba%e5%88%b6%e5%bf%85%e9%a1%bb%e9%81%b5%e5%be%aa%e7%9a%84%e8%a7%84%e8%8c%83">#&lt;/a>
+【强制】必须遵循的规范]
+&lt;/h3>&lt;ul>
+&lt;li>所有日志均使用英文进行记录；&lt;/li>
+&lt;li>记录日志时，要明确日志级别，选择正确的日志级别；&lt;/li>
+&lt;li>打印结构化的日志，不要拼接字符串， 采用 KV 模式；&lt;/li>
+&lt;li>日志均以大写开头，结尾不跟 .（可以接受问号和感叹号，但不推荐），例如：log.Errorw(err, &amp;ldquo;Failed to create lru cache&amp;rdquo;)；&lt;/li>
+&lt;li>使用过去时，例如：Could not delete B 而不是 Cannot delete B；&lt;/li>
+&lt;li>日志信息应使用主语进行记录，当有执行主体时使用完整句子 （A could not do B），如果主体是程序本身则省略主语（Could not do B）；&lt;/li>
+&lt;li>日志要脱敏，禁止输出敏感的信息，例如：密码、密钥、手机号、IP 等信息；&lt;/li>
+&lt;li>为了方便阅读日志，日志禁止换行；&lt;/li>
+&lt;li>日志中不要记录无用信息，防止无用日志淹没重要信息；&lt;/li>
+&lt;li>日志信息要准确全面，努力做到仅凭日志就可以定位问题；&lt;/li>
+&lt;li>Error 日志必须记录完整的上下文信息，例如：完整输入和输出、关键变量的值等；&lt;/li>
+&lt;li>使用 Warn 级别记录用户输入参数错误导致的程序错误。因为我们 Error 和 Warn 级别的日志告警策略不同，在 Warn 级别打印，可以避免频繁告警；&lt;/li>
+&lt;li>确保日志打印语句不 Panic，例如：klog.V(4).Infof(&amp;ldquo;Connection error: %s %s: %v&amp;rdquo;, t.Op, t.URL, t.Err)，如果 t 是 nil 就会导致日志调用时发生 panic，会大大加大排障难度；&lt;/li>
+&lt;li>日志信息禁用字符串拼接，而要使用占位符。使用占位符，格式更清晰，性能更优。例如：klog.V(4).Infof(&amp;ldquo;Get login token: %s&amp;rdquo;, rp.Token)；&lt;/li>
+&lt;li>所有 Operator、Controller、Kube APIServer Style 的组件为了跟 K8S 生态保持兼容，统一使用 &lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 包。所有非 Operator、Controller、Kube APIServer Style 的组件统一使用 &lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 包；&lt;/li>
+&lt;li>当时用 &lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 记录日志时，需要遵循以下规范：
+&lt;ul>
+&lt;li>要使用结构化的日志记录方式：klog.InfoS， klog.ErrorS。Example: klog.InfoS(&amp;ldquo;Received HTTP request&amp;rdquo;, &amp;ldquo;method&amp;rdquo;, &amp;ldquo;GET&amp;rdquo;, &amp;ldquo;URL&amp;rdquo;, &amp;ldquo;/metrics&amp;rdquo;, &amp;ldquo;latency&amp;rdquo;, time.Second);&lt;/li>
+&lt;li>日志级别：
+&lt;ul>
+&lt;li>Error 级别日志使用：klog.ErrorS；&lt;/li>
+&lt;li>Warning 级别日志使用：klog.V(1).InfoS；&lt;/li>
+&lt;li>Info 级别日志使用：klog.V(2).InfoS；&lt;/li>
+&lt;li>Debug 级别日志使用：klog.V(4).InfoS；&lt;/li>
+&lt;li>Trace 级别日志使用：klog.V(5).InfoS。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>日志键值对，值规范如下：
+&lt;ul>
+&lt;li>优先使用klog.KObj 或 klog.KObjSlice来记录 Kubernetes 对象；
+&lt;ul>
+&lt;li>当日志记录对象不是一个标准的 Kubernetes 资源对象时，使用klog.KRef；&lt;/li>
+&lt;li>当日志记录对象是单个 Kubernetes 资源对象时（例如：*v1.Pod），使用klog.KObj；&lt;/li>
+&lt;li>当日志记录对象是 Kubernetes 资源对象数组时（例如[]*v1.Pod），使用klog.KObjSlice。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>优先传递结构化的对象，而非object.String()；&lt;/li>
+&lt;li>当期望将[]byte类型的对象作为string类型记录时，需要明确使用string(&lt;byte array>)进行转换；&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>如果使用 &lt;a class="link" href="http://github.com/superproj/onex/pkg/log%E6%97%A5%E5%BF%97%E5%8C%85%EF%BC%9A" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/log日志包：open in new window&lt;/a>
+&lt;ul>
+&lt;li>要使用结构化的日志记录方式：log.C(ctx).Errorw()、log.C(ctx).Infow()等；&lt;/li>
+&lt;li>如果日志能获取到 context.Context 变量，需要使用 log.C() 函数打印，例如：log.C(ctx).Warnw(&amp;ldquo;please enable redis, otherwise the idempotent is invalid&amp;rdquo;)。使用 log.C(ctx) 可以输出必要的 KV，例如：&lt;a class="link" href="http://trace.id/" target="_blank" rel="noopener"
+>trace.idopen in new window&lt;/a>、&lt;a class="link" href="http://user.id/" target="_blank" rel="noopener"
+>user.idopen in new window&lt;/a> 等。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>不要使用 Fatal 级别的日志，因为 Fatal 级别的日志会调用 os.Exit(255) 导致日志退出。如果确实需要退出，请先打印 Error 级别的日志，在调用 os.Exit(255) 显示退出程序；&lt;/li>
+&lt;li>不要使用 Panic 级别的日志，这会导致程序 Panic，造成服务不稳定。如果程序需要 Panic，可以通过返回 error，并处理改 error 来达到相同的目的；&lt;/li>
+&lt;li>线上日志至少要保留 15 天，因为异常日志具有以 周 为频次发生的特点，保留 15 天，可以帮助你在排障时，有日志可以查询；&lt;/li>
+&lt;li>在 Debug、排障过程中，持续不断优化日志输出，定期对代码日志进行 review。如果定位问题时间过长则说明日志需要优化。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;strong>提示：&lt;/strong>&lt;/p>
+&lt;ul>
+&lt;li>任何日志事件都可以简单归为错误日志和非错误日志，所以在使用klog记录日志时，只使用了klog.ErrorS 和klog.InfoS；&lt;/li>
+&lt;li>在日志消息中，关于开头字母大小写的惯例因开发团队而异。一些团队更喜欢使用大写字母开头，这有助于强调重要性，以及使日志更易读，尤其是在较长的日志行中。而其他团队更倾向于使用小写字母，因为这样的日志看起来更加紧凑和一致；&lt;/li>
+&lt;li>无用日志常见情况：
+&lt;ul>
+&lt;li>能够放在一条日志中的东西放在多条日志中输出；&lt;/li>
+&lt;li>预期会发生且能够正常处理的异常，打印一堆无用的堆栈；&lt;/li>
+&lt;li>为了开发调试方便而加入的“临时”日志；&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>日志过少的情况有：
+&lt;ul>
+&lt;li>请求出错时不能通过日志直接定位问题，需要添加临时日志并重新请求才能定位问题；&lt;/li>
+&lt;li>无法确定服务中的后台任务是否按照期望执行；&lt;/li>
+&lt;li>无法确定服务的内存数据结构的状态；&lt;/li>
+&lt;li>无法确定服务的异常处理逻辑（如重试）是否正常执行；&lt;/li>
+&lt;li>无法确定服务启动时配置是否正确加载。&lt;/li>
+&lt;li>&amp;hellip;&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="建议建议遵循的规范">
+&lt;a href="#%e5%bb%ba%e8%ae%ae%e5%bb%ba%e8%ae%ae%e9%81%b5%e5%be%aa%e7%9a%84%e8%a7%84%e8%8c%83">#&lt;/a>
+【建议】建议遵循的规范
+&lt;/h3>&lt;ul>
+&lt;li>请遵循日志打印基本原则：日志信息要简明扼要、易理解、易搜索，并包含排障所需的上下文
+&lt;ul>
+&lt;li>失败日志建议格式为 Failed to &amp;lt;动词&amp;gt; + &amp;lt;一些事&amp;gt;，例如：log.Errorw(err, &amp;ldquo;Failed to initialize casbin adapter&amp;rdquo;)；&lt;/li>
+&lt;li>成功日志建议格式为 &amp;lt;动词&amp;gt; + &amp;lt;一些事&amp;gt;，例如：log.Infow(&amp;ldquo;Initialize idempotent success&amp;rdquo;)。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>共享库，例如：&lt;a class="link" href="http://github.com/superproj/onex/pkg/db" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/dbopen in new window&lt;/a> 只返回错误，不记录日志。因为共享库可能会用在命令行工具、其他项目中，如果记录日志，势必会造成命令行工具有日志输出，影响使用体验、共享库的日志输出跟其他项目的日志输出格式不一致等问题；&lt;/li>
+&lt;li>日志包名字统一为 &lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 或 &lt;a class="link" href="http://k8s.io/klog/v2%EF%BC%8C%E5%A6%82%E6%9E%9C%E5%90%8C%E4%B8%80%E4%B8%AA%E6%96%87%E4%BB%B6%E4%B8%AD%E6%9C%89%E5%85%B6%E4%BB%96%E5%90%8C%E5%90%8D%E7%9A%84%E6%97%A5%E5%BF%97%E5%8C%85%EF%BC%8C%E9%9C%80%E8%A6%81%E5%B0%86%E5%85%B6%E4%BB%96%E6%97%A5%E5%BF%97%E5%8C%85%E9%87%8D%E5%91%BD%E5%90%8D%EF%BC%8C%E8%80%8C%E4%B8%94%E9%87%8D%E5%91%BD%E5%90%8D%E7%9A%84%E5%90%8D%E5%AD%97%E8%A6%81%E5%9C%A8" target="_blank" rel="noopener"
+>k8s.io/klog/v2，如果同一个文件中有其他同名的日志包，需要将其他日志包重命名，而且重命名的名字要在open in new window&lt;/a>中保持一致，例如：kratoslog &amp;ldquo;&lt;a class="link" href="http://github.com/go-kratos/kratos/v2/log" target="_blank" rel="noopener"
+>github.com/go-kratos/kratos/v2/logopen in new window&lt;/a>&amp;quot;；&lt;/li>
+&lt;li>Error 日志应该在最原始的报错位置打印，一是避免上层代码缺失部分入参，二是避免漏打；&lt;/li>
+&lt;li>服务初始化时，成功信息和失败信息都需要打印，影响启动的错误需要 panic，并打印 FATAL 日志；&lt;/li>
+&lt;li>打印参数类型已知的情况下，建议按照对应类型格式化方式打印参数；不确定类型可采用 %v；结构体打印可使用 %+v，可将变量名和变量值都打印出来，但需要注意结构体包含指针类型变量，那打印的只是地址信息，因此需要单独打印。&lt;/li>
+&lt;/ul>
+&lt;h2 id="选择合适的日志级别">
+&lt;a href="#%e9%80%89%e6%8b%a9%e5%90%88%e9%80%82%e7%9a%84%e6%97%a5%e5%bf%97%e7%ba%a7%e5%88%ab">#&lt;/a>
+选择合适的日志级别
+&lt;/h2>&lt;p>不同级别的日志，具有不同的意义，能实现不同的功能，在开发中，我们应该根据目的，在合适的级别记录日志，这里我同样给你一些建议。具体如下表所示：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>日志级别&lt;/th>
+&lt;th>描述&lt;/th>
+&lt;th>告警级别&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>Debug&lt;/td>
+&lt;td>为了获取足够的信息进行 Debug，通常会在 Debug 级别打印很多日志。例如，可以打印整个 HTTP 请求的请求 Body 或者响应 Body。&lt;br>Debug 级别需要打印大量的日志，这会严重拖累程序的性能。并且，Debug 级别的日志，主要是为了能在开发测试阶段更好地 Debug，多是一些不影响现网业务的日志信息。&lt;br>所以，对于 Debug 级别的日志，在服务上线时我们一定要禁止掉。否则，就可能会因为大量的日志导致硬盘空间快速用完，从而造成服务宕机，也可能会影响服务的性能和产品体验。&lt;br>Debug 这个级别的日志可以随意输出，任何你觉得有助于开发、测试阶段调试的日志，都可以在这个级别打印。&lt;/td>
+&lt;td>无&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Info&lt;/td>
+&lt;td>Info 级别的日志可以记录一些有用的信息，供以后的运营分析，所以 Info 级别的日志不是越多越好，也不是越少越好，应以满足需求为主要目标。一些关键日志，可以在 Info 级别记录，但如果日志量大、输出频度过高，则要考虑在 Debug 级别记录。&lt;br>现网的日志级别一般是 Info 级别，为了不使日志文件占满整个磁盘空间，在记录日志时，要注意避免产生过多的 Info 级别的日志。例如，在 for 循环中，就要慎用 Info 级别的日志。&lt;/td>
+&lt;td>无&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Warn&lt;/td>
+&lt;td>一些警告类的日志可以记录在 Warn 级别，Warn 级别的日志表示遇到了预期之内的错误，并且已经进行了处理，不会影响主要功能。像这些日志，就需要你关注起来。Warn 更多的是业务级别的警告日志。&lt;/td>
+&lt;td>Lark&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Error&lt;/td>
+&lt;td>Error 级别的日志告诉我们程序执行出错，这些错误肯定会影响到程序的执行结果，例如请求失败、创建资源失败等。要记录每一个发生错误的日志，避免日后排障过程中这些错误被忽略掉。大部分的错误可以归在 Error 级别&lt;/td>
+&lt;td>Lark 转电话&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Panic&lt;/td>
+&lt;td>Panic 级别的日志在实际开发中很少用，通常只在需要错误堆栈，或者不想因为发生严重错误导致程序退出，而采用 defer 处理错误时使用&lt;/td>
+&lt;td>Lark + 电话&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Fatal&lt;/td>
+&lt;td>Fatal 是最高级别的日志，这个级别的日志说明问题已经相当严重，严重到程序无法继续运行，通常是系统级的错误。在开发中也很少使用，除非我们觉得某个错误发生时，整个程序无法继续运行&lt;/td>
+&lt;td>Lark + 电话&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>根据的日志规范 Panic、Fatal 级别的日志不需要打印，如果需要，可以使用Error 级别的日志 + os.Exit() 进行处理。&lt;/p>
+&lt;p>通常， 为了能够及时发现问题并排障，在发生错误日志时，要告警通知到相关的研发或运维，上述表格，也针对不同的日志级别，给出了告警级别，供你参考。&lt;/p>
+&lt;blockquote>
+&lt;p>提示：Lark 指代飞书办公软件。&lt;/p>
+&lt;/blockquote>
+&lt;p>&lt;strong>日志级别选择图：&lt;/strong>
+这里用一张图来总结下，如何选择 Debug、Info、Warn、Error、Panic、Fatal 这几种日志级别。&lt;/p>
+&lt;p>&lt;img src="https://cdn.nlark.com/yuque/0/2024/png/43447143/1713257876347-befa94ca-2330-403c-8c8e-0e61eba99c35.png#averageHue=%23f0f0f0&amp;amp;clientId=u86c1e48d-415c-4&amp;amp;from=paste&amp;amp;id=ucd1808f5&amp;amp;originHeight=812&amp;amp;originWidth=1920&amp;amp;originalType=url&amp;amp;ratio=1.75&amp;amp;rotation=0&amp;amp;showTitle=true&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=uc89bb048-8134-40fd-9cbc-7c79f7ed8ec&amp;amp;title=%E6%97%A5%E5%BF%97%E7%BA%A7%E5%88%AB%E9%80%89%E6%8B%A9%E5%9B%BE"
+loading="lazy"
+alt="日志级别选择图"
+>&lt;/p>
+&lt;h2 id="日志打印时机">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%89%93%e5%8d%b0%e6%97%b6%e6%9c%ba">#&lt;/a>
+日志打印时机
+&lt;/h2>&lt;p>在打印日志时，要选择合适的时机进行打印，不能随便打印。&lt;/p>
+&lt;h3 id="建议打印时机">
+&lt;a href="#%e5%bb%ba%e8%ae%ae%e6%89%93%e5%8d%b0%e6%97%b6%e6%9c%ba">#&lt;/a>
+建议打印时机
+&lt;/h3>&lt;p>日志主要是用来定位问题的，所以整体来说，我们要在有需要的地方打印日志。那么具体是哪些地方呢？我给你几个建议。&lt;/p>
+&lt;ul>
+&lt;li>打印程序的配置参数：系统在启动过程中通常会首先读启动参数，可以在系统启动后将这些参数输出到日志中，方便确认系统是按照期望的参数启动的；&lt;/li>
+&lt;li>网络通信部分：发送请求前、收到请求结果均应打印 Info 级别的日志。根据我的研发经验，如果你的程序调用了第三方组件，在排障时，需要提供给第三方组件的研发/运维足够的上下文，帮助复现问题，才会得到他们及时有效的支持，所以这里建议在请求第三方接口时，至少要记录请求包、返回包、URL 等信息。注意，如果请求包和返回包很大，需谨慎打印；&lt;/li>
+&lt;li>在分支语句处打印日志：在分支语句处打印日志，可以判断出代码走了哪个分支，有助于判断请求的下一跳，继而继续排查问题；&lt;/li>
+&lt;li>写操作必须打印日志：写操作最可能会引起比较严重的业务故障，写操作打印日志，可以在出问题时找到关键信息；&lt;/li>
+&lt;li>非预期执行时打印日志：如果程序走到了跟我们预期不一样的分支，需要打印日志。例如：正常情况下，服务的某个状态应该是 Running 的，但真实的状态是 Pending 的，这种异常的状态，很可能会带来问题，后期可能需要定位排障，这时候可以打印相关日志；&lt;/li>
+&lt;li>后台定期执行的任务：如定期更新缓存的任务，可以记录任务开始时间，任务结束时间，更新了多少条缓存配置等等，这样可以掌握定期执行的任务的状态；&lt;/li>
+&lt;li>业务流程关键节点：我们经常会面对流程比较复杂的业务流程，在整个流程的关键节点上，可以记录下日志，例如，当进行物品交换时，可以将要交换的物品打印出来；&lt;/li>
+&lt;li>数据状态变化时：服务端程序的最核心的逻辑就是维护数据状态的变化，因此，在状态有变化的时候，可以记录下日志，例如，订单从创建状态变为已支付状态时，可以记录日志；&lt;/li>
+&lt;li>在错误产生的最原始位置打印日志：对于嵌套的 Error，可在 Error 产生的最初位置打印 Error 日志，上层如果不需要添加必要的信息，可以直接返回下层的 Error。我给你举个例子：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;span class="lnt">24
+&lt;/span>&lt;span class="lnt">25
+&lt;/span>&lt;span class="lnt">26
+&lt;/span>&lt;span class="lnt">27
+&lt;/span>&lt;span class="lnt">28
+&lt;/span>&lt;span class="lnt">29
+&lt;/span>&lt;span class="lnt">30
+&lt;/span>&lt;span class="lnt">31
+&lt;/span>&lt;span class="lnt">32
+&lt;/span>&lt;span class="lnt">33
+&lt;/span>&lt;span class="lnt">34
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kn">package&lt;/span> &lt;span class="nx">main&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="p">(&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s">&amp;#34;flag&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s">&amp;#34;fmt&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s">&amp;#34;github.com/golang/glog&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">main&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">flag&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Parse&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">defer&lt;/span> &lt;span class="nx">glog&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Flush&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nf">loadConfig&lt;/span>&lt;span class="p">();&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">!=&lt;/span> &lt;span class="kc">nil&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">glog&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Error&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">err&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">loadConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kt">error&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nf">decodeConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="c1">// 直接返回
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">decodeConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kt">error&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nf">readConfig&lt;/span>&lt;span class="p">();&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">!=&lt;/span> &lt;span class="kc">nil&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">fmt&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;could not decode configuration data for user %s: %v&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s">&amp;#34;colin&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nx">err&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="c1">// 添加必要的信息，用户名称
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="kc">nil&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">readConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kt">error&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">glog&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;read: end of input.&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">fmt&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;read: end of input&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>通过在最初产生错误的位置打印日志，我们可以很方便地追踪到日志的根源，进而在上层追加一些必要的信息。这可以让我们了解到该错误产生的影响，有助于排障。另外，直接返回下层日志，还可以减少重复的日志打印。&lt;/p>
+&lt;p>当代码调用第三方包的函数，且第三方包函数出错时，会打印错误信息。比如：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="k">if&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nx">os&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Chdir&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;/root&amp;#34;&lt;/span>&lt;span class="p">);&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">!=&lt;/span> &lt;span class="kc">nil&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">log&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;change dir failed: %v&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nx">err&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="不建议打印时机">
+&lt;a href="#%e4%b8%8d%e5%bb%ba%e8%ae%ae%e6%89%93%e5%8d%b0%e6%97%b6%e6%9c%ba">#&lt;/a>
+不建议打印时机
+&lt;/h3>&lt;p>当然，在记录日志时，也有有一些地方是不需要记录日志的，这些地方建议如下：&lt;/p>
+&lt;ul>
+&lt;li>在循环中打印日志要慎重：如果循环次数过多，会导致打印大量的日志，严重拖累代码的性能，建议的办法是在循环中记录要点，在循环外面总结打印出来；&lt;/li>
+&lt;li>QPS 特别高的接口谨慎打印日志：对于 QPS 特别高的接口，要谨慎选择是否打印日志或者少打印日志，否则可能会影响接口的性能和 CPU 的负载。&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志级别设置规范">
+&lt;a href="#%e6%97%a5%e5%bf%97%e7%ba%a7%e5%88%ab%e8%ae%be%e7%bd%ae%e8%a7%84%e8%8c%83">#&lt;/a>
+日志级别设置规范
+&lt;/h2>&lt;ul>
+&lt;li>项目刚刚上线可将日志级别设置为 Debug 级别：
+&lt;ul>
+&lt;li>&lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 设置 level 为 debug；&lt;/li>
+&lt;li>&lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 设置 -v 为 4。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>如果项目经过一段时间的运行，达到一种很稳定的状态，为了不影响性能，需要设置日志级别为 Info：
+&lt;ul>
+&lt;li>&lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 设置 level 为 info；&lt;/li>
+&lt;li>&lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 设置 -v 为 2。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>测试/开发环境可以设置日志级别为 Debug 级别：
+&lt;ul>
+&lt;li>&lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 设置 level 为 debug；&lt;/li>
+&lt;li>&lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 设置 -v 为 4。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志格式设置规范">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%a0%bc%e5%bc%8f%e8%ae%be%e7%bd%ae%e8%a7%84%e8%8c%83">#&lt;/a>
+日志格式设置规范
+&lt;/h2>&lt;ul>
+&lt;li>线上日志为了便于日志采集工具采集，需要设置为 JSON 格式；&lt;/li>
+&lt;li>开发、测试环境的日志，可以根据需要设置为TEXT 或 JSON 格式。&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志打印检查">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%89%93%e5%8d%b0%e6%a3%80%e6%9f%a5">#&lt;/a>
+日志打印检查
+&lt;/h2>&lt;p>Kubernetes 提供了 &lt;a class="link" href="https://github.com/kubernetes-sigs/logtools/tree/main/logcheck" target="_blank" rel="noopener"
+>logcheckopen in new window&lt;/a> 工具，来检查 Kubernetes 中的日志记录是否符合规范。你也可以安装，并检查，命令如下：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-text" data-lang="text">&lt;span class="line">&lt;span class="cl">$ go install sigs.k8s.io/logtools/logcheck@latest
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">$ logcheck -check-contextual ${ONEX_ROOT}/...
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">$ logcheck -check-structured ${ONEX_ROOT}/...
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>${ONEX_ROOT}为根目录，你可以根据需要修改检查目录。&lt;/p>
+&lt;blockquote>
+&lt;p>提示：logcheck工具建议可以了解下，真正的项目开发中，并不实用，尤其不适合集成在 CI 流程中，作为项目发布的强制规范检查。因为很多代码确实难以，也不需要完全遵循logcheck工具制定的规范。&lt;/p>
+&lt;/blockquote>
+&lt;h2 id="其他日志规范参考">
+&lt;a href="#%e5%85%b6%e4%bb%96%e6%97%a5%e5%bf%97%e8%a7%84%e8%8c%83%e5%8f%82%e8%80%83">#&lt;/a>
+其他日志规范参考
+&lt;/h2>&lt;ul>
+&lt;li>Kubernetes 日志记录规范：&lt;a class="link" href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md#what-method-to-use" target="_blank" rel="noopener"
+>Loggingopen in new window&lt;/a>；&lt;/li>
+&lt;li>&lt;a class="link" href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/migration-to-structured-logging.md" target="_blank" rel="noopener"
+>Structured and Contextual Logging migration instructions&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

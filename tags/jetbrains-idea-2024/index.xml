@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>JetBrains IDEA 2024 on 哈皮的自言自语</title><link>https://xiuwei.github.io/tags/jetbrains-idea-2024/</link><description>Recent content in JetBrains IDEA 2024 on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Fri, 22 Mar 2024 21:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/tags/jetbrains-idea-2024/index.xml" rel="self" type="application/rss+xml"/><item><title>IntelliJ IDEA Ultimate 2024 激活（适用全家桶）</title><link>https://xiuwei.github.io/p/jetbrains-ide-activated/</link><pubDate>Fri, 22 Mar 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/jetbrains-ide-activated/</guid><description>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/cover.png" alt="Featured image of post IntelliJ IDEA Ultimate 2024 激活（适用全家桶）" />&lt;h2 id="0-前言">
+&lt;a href="#0-%e5%89%8d%e8%a8%80">#&lt;/a>
+0. 前言
+&lt;/h2>&lt;p>JetBrains 的产品提供了强大的功能、良好的用户体验、强大的社区支持、跨平台支持以及灵活的许可模式，能够满足开发者在软件开发过程中的各种需求，受到广大开发者的欢迎。&lt;/p>
+&lt;p>同时，JetBrains 的产品力尽管非常出色但因为价格昂贵，很多个人开发者都负担不起。如果您又想使用 IntelliJ IDEA Ultimate Edition（专业版），可以参考下面这种方式进行免费激活。&lt;/p>
+&lt;blockquote>
+&lt;p>注意：本文提供方法来自网络，仅供测试使用，请勿用于商业用途，如果喜欢JetBrains的产品，请支持正版！&lt;/p>
+&lt;/blockquote>
+&lt;h2 id="1-下载安装">
+&lt;a href="#1-%e4%b8%8b%e8%bd%bd%e5%ae%89%e8%a3%85">#&lt;/a>
+1. 下载安装
+&lt;/h2>&lt;p>访问 &lt;a class="link" href="https://www.jetbrains.com/zh-cn/idea/download" target="_blank" rel="noopener"
+>JetBrains IDEA 下载页面&lt;/a> 下载合适的版本并完成安装。&lt;/p>
+&lt;p>安装完成后，请运行一次软件，进入到 &lt;em>激活/试用&lt;/em> 界面后即可关闭软件。&lt;/p>
+&lt;h2 id="2-激活">
+&lt;a href="#2-%e6%bf%80%e6%b4%bb">#&lt;/a>
+2. 激活
+&lt;/h2>&lt;p>激活工具&lt;code>ja-netfilter&lt;/code>最初是zhile大神开发并发布于网络，后续并由热心大佬加工加工，打包成半自动化的激活工具&lt;code>ja-netfilter-all&lt;/code>发布，很大程度上降低了使用门槛。&lt;/p>
+&lt;blockquote>
+&lt;p>注意：下面的下载链接如已失效，请访问 &lt;a class="link" href="https://jetbra.in/s" target="_blank" rel="noopener"
+>https://jetbra.in/s&lt;/a> 页面扫描并获取最新的地址&lt;/p>
+&lt;/blockquote>
+&lt;h3 id="21-下载并安装激活包">
+&lt;a href="#21-%e4%b8%8b%e8%bd%bd%e5%b9%b6%e5%ae%89%e8%a3%85%e6%bf%80%e6%b4%bb%e5%8c%85">#&lt;/a>
+2.1 下载并安装“激活包”
+&lt;/h3>&lt;p>首先，&lt;a class="link" href="https://cloudflare-ipfs.com/ipfs/bafybeiawsvnhqx5o2aqa37pvq7brlk7vqj2cpty3b5xac655bxbpqbpkq4/files/jetbra-ded4f9dc4fcb60294b21669dafa90330f2713ce4.zip" target="_blank" rel="noopener"
+>下载激活包&lt;/a>，下载后解压到自己预期的目录下（避免误删，此激活包在激活后仍然有用处），内容如下：&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/images/index/1718698642185.png"
+width="2698"
+height="842"
+srcset="https://xiuwei.github.io/p/jetbrains-ide-activated/images/index/1718698642185_hu06d6dda3368ef58b190bc7976e75111a_163627_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/jetbrains-ide-activated/images/index/1718698642185_hu06d6dda3368ef58b190bc7976e75111a_163627_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="320"
+data-flex-basis="769px"
+>&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/image.png"
+width="1838"
+height="862"
+srcset="https://xiuwei.github.io/p/jetbrains-ide-activated/image_hu88b5f89d86124daf54b28e2b0371d8fd_245780_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/jetbrains-ide-activated/image_hu88b5f89d86124daf54b28e2b0371d8fd_245780_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="213"
+data-flex-basis="511px"
+>&lt;/p>
+&lt;p>然后进入scripts目录，目录里面是安装脚本&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/image-1.png"
+width="1840"
+height="872"
+srcset="https://xiuwei.github.io/p/jetbrains-ide-activated/image-1_hue2220a8c1cf69bf2e040b7055f60c486_223293_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/jetbrains-ide-activated/image-1_hue2220a8c1cf69bf2e040b7055f60c486_223293_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="211"
+data-flex-basis="506px"
+>&lt;/p>
+&lt;ul>
+&lt;li>install.sh 用于Linux或者MacOS系统激活IntelliJ IDEA&lt;/li>
+&lt;li>install-all-users.vbs 用于Windows系统针对所有windows用户激活IntelliJ IDEA&lt;/li>
+&lt;li>install-current-user.vbs 用于Windows系统针对当前windows系统用户激活IntelliJ IDEA&lt;/li>
+&lt;/ul>
+&lt;blockquote>
+&lt;p>un开头的文件分别对应上面的卸载脚本。&lt;/p>
+&lt;/blockquote>
+&lt;p>根据自己的操作系统情况，选择对应的脚本执行即可完成激活包的安装。&lt;/p>
+&lt;h3 id="22-获取并使用激活码">
+&lt;a href="#22-%e8%8e%b7%e5%8f%96%e5%b9%b6%e4%bd%bf%e7%94%a8%e6%bf%80%e6%b4%bb%e7%a0%81">#&lt;/a>
+2.2 获取并使用激活码
+&lt;/h3>&lt;p>首先，&lt;a class="link" href="https://cloudflare-ipfs.com/ipfs/bafybeiawsvnhqx5o2aqa37pvq7brlk7vqj2cpty3b5xac655bxbpqbpkq4/" target="_blank" rel="noopener"
+>访问激活码发布站点&lt;/a>，选择对应的产品并点击复制激活码到剪切板。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/image-2.png"
+width="2712"
+height="1294"
+srcset="https://xiuwei.github.io/p/jetbrains-ide-activated/image-2_hu0a38edbc385769552ac847204ee44cd8_225929_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/jetbrains-ide-activated/image-2_hu0a38edbc385769552ac847204ee44cd8_225929_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="209"
+data-flex-basis="502px"
+>&lt;/p>
+&lt;p>然后，打开IntelliJ IDEA，点击 &amp;ldquo;Configure&amp;rdquo; -&amp;gt; &amp;ldquo;Manage License&amp;rdquo;。&lt;/p>
+&lt;p>选择 &amp;ldquo;Activation Code&amp;rdquo; 并粘贴刚刚复制的激活码。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/image-3.png"
+width="1610"
+height="1080"
+srcset="https://xiuwei.github.io/p/jetbrains-ide-activated/image-3_hud280eb3b999b09772ba4a9cb9d3bf4af_354908_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/jetbrains-ide-activated/image-3_hud280eb3b999b09772ba4a9cb9d3bf4af_354908_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="149"
+data-flex-basis="357px"
+>&lt;/p>
+&lt;p>点击左下角的的“Activate”按钮即可激活，激活信息如下：&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/jetbrains-ide-activated/image-4.png"
+width="1664"
+height="1324"
+srcset="https://xiuwei.github.io/p/jetbrains-ide-activated/image-4_hu4f5030148a9b1185c884857e1e455f93_291056_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/jetbrains-ide-activated/image-4_hu4f5030148a9b1185c884857e1e455f93_291056_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="125"
+data-flex-basis="301px"
+>&lt;/p>
+&lt;p>到此，激活就已经完成了。&lt;/p></description></item></channel></rss>

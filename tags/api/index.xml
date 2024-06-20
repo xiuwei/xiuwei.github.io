@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>API on 哈皮的自言自语</title><link>https://xiuwei.github.io/tags/api/</link><description>Recent content in API on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Sun, 05 May 2024 19:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/tags/api/index.xml" rel="self" type="application/rss+xml"/><item><title>REST 接口规范</title><link>https://xiuwei.github.io/p/rest-specification/</link><pubDate>Sun, 05 May 2024 19:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/rest-specification/</guid><description>&lt;img src="https://xiuwei.github.io/p/rest-specification/cover.jpg" alt="Featured image of post REST 接口规范" />&lt;h2 id="restful-api-介绍">
+&lt;a href="#restful-api-%e4%bb%8b%e7%bb%8d">#&lt;/a>
+RESTful API 介绍
+&lt;/h2>&lt;p>在回答“RESTful API 是什么”之前，我们先来看下 REST 是什么意思：REST 代表的是表现层状态转移（REpresentational State Transfer），由 Roy Fielding 在他的论文&lt;a class="link" href="https://www.ics.uci.edu/~fielding/pubs/dissertation/top.htm" target="_blank" rel="noopener"
+>《Architectural Styles and the Design of Network-based Software Architectures》&lt;/a>里提出。REST 本身并没有创造新的技术、组件或服务，它只是一种软件架构风格，是一组架构约束条件和原则，而不是技术框架。&lt;/p>
+&lt;p>REST 有一系列规范，满足这些规范的 API 均可称为 RESTful API。REST 规范把所有内容都视为资源，也就是说网络上一切皆资源。REST 架构对资源的操作包括获取、创建、修改和删除，这些操作正好对应 HTTP 协议提供的 &lt;code>GET&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>PUT&lt;/code> 和 &lt;code>DELETE&lt;/code> 方法。&lt;/p>
+&lt;p>REST 风格虽然适用于很多传输协议，但在实际开发中，由于 REST 天生和 HTTP 协议相辅相成，因此 HTTP 协议已经成了实现 RESTful API 事实上的标准。所以，REST 具有以下核心特点：&lt;/p>
+&lt;ul>
+&lt;li>以资源（resource）为中心，所有的东西都抽象成资源，所有的行为都应该是在资源上的 CRUD 操作。
+&lt;ul>
+&lt;li>资源对应着面向对象范式里的对象，面向对象范式以对象为中心。&lt;/li>
+&lt;li>资源使用 URI 标识，每个资源实例都有一个唯一的 URI 标识。例如，如果我们有一个用户，用户名是 &lt;code>admin&lt;/code>，那么它的 URI 标识就可以是 &lt;code>/users/admin&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>资源是有状态的，使用 JSON/XML 等在 HTTP Body 里表征资源的状态。&lt;/li>
+&lt;li>客户端通过四个 HTTP 动词，对服务器端资源进行操作，实现“表现层状态转化”。&lt;/li>
+&lt;li>无状态，这里的无状态是指每个 RESTful API 请求都包含了所有足够完成本次操作的信息，服务器端无须保持 session。无状态对于服务端的弹性扩容是很重要的。&lt;/li>
+&lt;/ul>
+&lt;blockquote>
+&lt;p>提示：因为怕你弄混概念，这里强调下 REST 和 RESTful API 的区别：REST 是一种规范，而 RESTful API 则是满足这种规范的 API 接口。&lt;/p>
+&lt;/blockquote>
+&lt;h2 id="restful-api-设计原则">
+&lt;a href="#restful-api-%e8%ae%be%e8%ae%a1%e5%8e%9f%e5%88%99">#&lt;/a>
+RESTful API 设计原则
+&lt;/h2>&lt;p>上面我们说了，RESTful API 就是满足 REST 规范的 API，由此看来，RESTful API 的核心是规范，那么具体有哪些规范呢？&lt;/p>
+&lt;p>接下来从 URI 设计、API 版本管理等七个方面，详细介绍 RESTful API 的设计原则。&lt;/p>
+&lt;h3 id="uri-设计">
+&lt;a href="#uri-%e8%ae%be%e8%ae%a1">#&lt;/a>
+URI 设计
+&lt;/h3>&lt;p>资源都是使用 URI 标识的，我们应该按照一定的规范来设计 URI，通过规范化可以使我们的 API 接口更加易读、易用。以下是 URI 设计时，应该遵循的一些规范：&lt;/p>
+&lt;ul>
+&lt;li>资源名使用名词而不是动词，并且用名词复数表示。资源分为 Collection 和 Member 两种。
+&lt;ul>
+&lt;li>Collection：一堆资源的集合。例如我们系统里有很多用户（User），这些用户的集合就是 Collection。Collection 的 URI 标识应该是 域名/资源名复数， 例如 &lt;code>example.com/v1/users&lt;/code>。&lt;/li>
+&lt;li>Member：单个特定资源。例如系统中特定名字的用户，就是 Collection 里的一个 Member。Member 的 URI 标识应该是 域名/资源名复数/资源名称， 例如 &lt;code>example.com/v1/users/colin&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>URI 结尾不应包含 &lt;code>/&lt;/code> 。&lt;/li>
+&lt;li>URI 中不能出现下划线 &lt;code>_&lt;/code>，必须用中杠线 &lt;code>-&lt;/code> 代替（有些人推荐用 &lt;code>_&lt;/code>，有些人推荐用 &lt;code>-&lt;/code>，统一使用一种格式即可，我比较推荐用 &lt;code>-&lt;/code>）。&lt;/li>
+&lt;li>URI 路径用小写，不要用大写。&lt;/li>
+&lt;li>避免层级过深的 URI。超过 2 层的资源嵌套会很乱，建议将其他资源转化为 &lt;code>?&lt;/code> 参数，比如：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-text" data-lang="text">&lt;span class="line">&lt;span class="cl">/schools/qinghua/classes/rooma/students/colin # 不推荐
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">/students?school=qinghua&amp;amp;class=rooma # 推荐
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>这里有个地方需要注意：在实际的 API 开发中，可能你会发现有些操作不能很好地映射为一个 REST 资源，这时候，你可以参考下面的做法。&lt;/p>
+&lt;ul>
+&lt;li>将一个操作变成资源的一个属性，比如想在系统中暂时禁用某个用户，可以这么设计 URI：&lt;code>/users/colin?active=false&lt;/code>。&lt;/li>
+&lt;li>将操作当作是一个资源的嵌套资源，比如一个 GitHub 的加星操作：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-text" data-lang="text">&lt;span class="line">&lt;span class="cl">PUT /gists/:id/star # github star action
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">DELETE /gists/:id/star # github unstar action
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>如果以上都不能解决问题，有时可以打破这类规范。比如登录操作，登录不属于任何一个资源，URI 可以设计为：&lt;code>/v1/login&lt;/code>。&lt;/p>
+&lt;p>在设计 URI 时，如果你遇到一些不确定的地方，推荐你参考 &lt;a class="link" href="https://developer.github.com/v3/" target="_blank" rel="noopener"
+>GitHub 标准 RESTful API&lt;/a>。&lt;/p>
+&lt;h3 id="rest-资源操作映射为-http-方法">
+&lt;a href="#rest-%e8%b5%84%e6%ba%90%e6%93%8d%e4%bd%9c%e6%98%a0%e5%b0%84%e4%b8%ba-http-%e6%96%b9%e6%b3%95">#&lt;/a>
+REST 资源操作映射为 HTTP 方法
+&lt;/h3>&lt;p>基本上 RESTful API 都是使用 HTTP 协议原生的 &lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>DELETE&lt;/code> 来标识对资源的 CRUD 操作，形成的规范如下表所示：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>Collection 资源（&lt;strong>/v1/users&lt;/strong>）&lt;/th>
+&lt;th>Ember 资源（&lt;strong>/v1/users/:username&lt;/strong>）&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>获取一个 Collection 下所有的 Member 信息&lt;/td>
+&lt;td>获取一个 Member 的状态表征&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>在 Collection 中新建一个 Member&lt;/td>
+&lt;td>没有这类操作&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>用另外一个 Collection 替换这个 Collection&lt;/td>
+&lt;td>更新一个 Member 的状态表征&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELETE&lt;/td>
+&lt;td>删除整个 Collection，可以用来批量删除资源&lt;/td>
+&lt;td>删除这个 Member&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>提示：Collection 代表资源集合，Ember 代表特定的资源。&lt;/p>
+&lt;p>下面是一个具体的映射例子：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>行为&lt;/th>
+&lt;th>URI&lt;/th>
+&lt;th>示例说明&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>获取资源列表&lt;/td>
+&lt;td>&lt;code>/users&lt;/code>&lt;/td>
+&lt;td>获取用户列表&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>获取一个具体的资源表述&lt;/td>
+&lt;td>&lt;code>/users/colin&lt;/code>&lt;/td>
+&lt;td>获取&lt;code>colin&lt;/code>用户的详细信息&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>创建一个新的资源&lt;/td>
+&lt;td>&lt;code>/users&lt;/code>&lt;/td>
+&lt;td>创建一个新的用户&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>更新一个资源&lt;/td>
+&lt;td>&lt;code>/users/colin&lt;/code>&lt;/td>
+&lt;td>更新用户名为&lt;code>colin&lt;/code>的用户&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELET&lt;/td>
+&lt;td>删除服务器上的一个资源&lt;/td>
+&lt;td>&lt;code>/users/colin&lt;/code>&lt;/td>
+&lt;td>删除用户名为&lt;code>colin&lt;/code>的用户&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>&lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>DELETE&lt;/code> 是 RESTful API 最常用的 HTTP 请求方法。HTTP 还提供了另外 3 种请求方法，这些方法不经常使用，这里也列举出来供你参考：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>Collection 资源（/v1/users）&lt;/th>
+&lt;th>Ember 资源（/v1/users/:username）&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>PATCH&lt;/td>
+&lt;td>整个 Collection 进行部分更新，通常用于更新 Collection 的某些属性或字段&lt;/td>
+&lt;td>获取一个 Member 的元信息&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>HEAD&lt;/td>
+&lt;td>获取一个 Collection 的元信息，但不需要获取实际资源的内容&lt;/td>
+&lt;td>获取 Member 的元信息，但不需要获取实际资源的内容&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>OPTIONS&lt;/td>
+&lt;td>获取整个 Collection 支持的通信选项，比如支持的 HTTP 方法、请求头等信息&lt;/td>
+&lt;td>获取 Member 支持的通信选项，包括支持的 HTTP 方法、请求头等信息&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;blockquote>
+&lt;p>提示：OPTIONS 请求方法通常用于跨域请求时的预检请求。&lt;/p>
+&lt;/blockquote>
+&lt;p>对资源的操作应该满足安全性和幂等性：&lt;/p>
+&lt;ul>
+&lt;li>安全性：不会改变资源状态，可以理解为只读的。&lt;/li>
+&lt;li>幂等性：执行 1 次和执行 N 次，对资源状态改变的效果是等价的。&lt;/li>
+&lt;/ul>
+&lt;p>使用不同 HTTP 方法时，资源操作的安全性和幂等性对照见下表：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>是否安全&lt;/th>
+&lt;th>是否幂等&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>是&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>否&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELETE&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PATCH&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>HEAD&lt;/td>
+&lt;td>是&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>OPTIONS&lt;/td>
+&lt;td>是&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>在使用 HTTP 方法的时候，有以下两点需要你注意：&lt;/p>
+&lt;ul>
+&lt;li>GET 返回的结果，要尽量可用于 &lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code> 操作中。例如，用 GET 方法获得了一个 user 的信息，调用者修改 user 的邮件，然后将此结果再用 &lt;code>PUT&lt;/code> 方法更新。这要求 &lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code> 操作的资源属性类型是一样的。&lt;/li>
+&lt;li>如果对资源进行状态/属性变更，要用 &lt;code>PUT&lt;/code> 方法，&lt;code>POST&lt;/code> 方法仅用来创建或者批量删除这两种场景。&lt;/li>
+&lt;/ul>
+&lt;p>在设计 API 时，经常会有批量删除的需求，需要在请求中携带多个需要删除的资源名，但是 HTTP 的 &lt;code>DELETE&lt;/code> 方法不能携带多个资源名，这时候可以通过下面三种方式来解决：&lt;/p>
+&lt;ul>
+&lt;li>发起多个 DELETE 请求。&lt;/li>
+&lt;li>操作路径中带多个 id，id 之间用分隔符分隔， 例如：&lt;code>DELETE /v1/users?ids=1,2,3&lt;/code> 。&lt;/li>
+&lt;li>直接使用 POST 方式来批量删除，Body 中传入需要删除的资源列表。&lt;/li>
+&lt;/ul>
+&lt;p>其中，第二种是我最推荐的方式，因为使用了匹配的 &lt;code>DELETE&lt;/code> 动词，并且不需要发送多次 &lt;code>DELETE&lt;/code> 请求。这时候，你可能会问如果 id 列表太长，会不会有性能问题？其实不会的，因为在一个真实的项目中，我们每次允许删除的条目个数是有限的，每次最大删除的条目数，通常跟每个页面的最大展示条数保持一致。&lt;/p>
+&lt;p>你需要注意的是，这三种方式都有各自的使用场景，你可以根据需要自行选择。如果选择了某一种方式，那么整个项目都需要统一用这种方式。&lt;/p>
+&lt;h3 id="匹配-http-请求方法的参数">
+&lt;a href="#%e5%8c%b9%e9%85%8d-http-%e8%af%b7%e6%b1%82%e6%96%b9%e6%b3%95%e7%9a%84%e5%8f%82%e6%95%b0">#&lt;/a>
+匹配 HTTP 请求方法的参数
+&lt;/h3>&lt;p>HTTP 有很多请求方法，例如：&lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>DELETE&lt;/code> 等。在执行 HTTP 请求时，根据请求方法的类型，其参数指定位置也是有规范。在执行请求时，HTTP 请求方法和请求参数不匹配的请求，客户端会报错或者拒绝请求。&lt;/p>
+&lt;p>HTTP 请求参数，可以视情况设置在以下位置：&lt;/p>
+&lt;ul>
+&lt;li>查询参数（Query Parameters）：查询参数是附加在 URL 路径后面的键值对，使用 &lt;code>?&lt;/code> 开头，多个参数之间使用 &lt;code>&amp;amp;&lt;/code> 分隔，例如：&lt;code>http://example.com/api/resource?param1=value1&amp;amp;param2=value2&lt;/code>。查询参数通常用于对资源进行过滤、分页、排序等操作；&lt;/li>
+&lt;li>路径参数（Path Parameters）：路径参数是出现在 URL 路径中的一部分，通常用花括号 &lt;code>{}&lt;/code> 包裹，例如：&lt;code>http://example.com/api/resource/{id}&lt;/code>。路径参数用于标识资源的唯一标识符或者其他需要在 URL 中直接体现的参数；&lt;/li>
+&lt;li>请求头（Request Headers）：请求头是包含在 HTTP 请求头部中的键值对，例如：&lt;code>Content-Type: application/json&lt;/code>。请求头用于传递请求的元数据、授权信息、内容类型等；&lt;/li>
+&lt;li>请求体（Request Body）：请求体是包含在 HTTP 请求中的主体部分，通常用于 &lt;code>POST&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>PATCH&lt;/code> 等方法中传递数据。请求体用于传递请求的具体数据，通常使用 JSON、XML 等格式；&lt;/li>
+&lt;li>Cookie：Cookie 是存储在客户端的一小段文本信息，会随着每次请求被发送到服务器。Cookie 用于在客户端和服务器之间保持状态，通常用于会话管理、用户认证等。&lt;/li>
+&lt;/ul>
+&lt;p>下表是不同 HTTP 请求方法所支持的请求参数的设置位置：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>请求方法&lt;/th>
+&lt;th>参数位置&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>适配的请求参数位置：查询参数（Query Parameters）和路径参数（Path Parameters）；GET 请求通常通过查询参数传递参数，也可以通过路径参数传递需要标识的资源。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>适配的请求参数位置：请求体（Request Body）；POST 请求通常通过请求体传递需要创建的资源的数据。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>适配的请求参数位置：路径参数（Path Parameters）和请求体（Request Body）；PUT 请求通常通过路径参数指定要更新的资源，通过请求体传递更新后的数据。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELETE&lt;/td>
+&lt;td>适配的请求参数位置：路径参数（Path Parameters）；DELETE 请求通常通过路径参数指定要删除的资源。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PATCH&lt;/td>
+&lt;td>适配的请求参数位置：路径参数（Path Parameters）和请求体（Request Body）；PATCH 请求通常通过路径参数指定要部分更新的资源，通过请求体传递更新的部分数据。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>HEAD&lt;/td>
+&lt;td>适配的请求参数位置：查询参数（Query Parameters）和路径参数（Path Parameters）；HEAD 请求通常通过查询参数和路径参数传递参数，用于获取资源的元信息而不获取资源本身。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>OPTIONS&lt;/td>
+&lt;td>适配的请求参数位置：无特定参数位置要求；OPTIONS 请求通常用于获取目标资源所支持的通信选项，不需要特定的请求参数位置。&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="统一的返回格式">
+&lt;a href="#%e7%bb%9f%e4%b8%80%e7%9a%84%e8%bf%94%e5%9b%9e%e6%a0%bc%e5%bc%8f">#&lt;/a>
+统一的返回格式
+&lt;/h3>&lt;p>一般来说，一个系统的 RESTful API 会向外界开放多个资源的接口，每个接口的返回格式要保持一致。另外，每个接口都会返回成功和失败两种消息，这两种消息的格式也要保持一致。不然，客户端代码要适配不同接口的返回格式，每个返回格式又要适配成功和失败两种消息格式，会大大增加用户的学习和使用成本。返回的格式没有强制的标准，你可以根据实际的业务需要返回不同的格式。&lt;/p>
+&lt;h3 id="api-版本管理">
+&lt;a href="#api-%e7%89%88%e6%9c%ac%e7%ae%a1%e7%90%86">#&lt;/a>
+API 版本管理
+&lt;/h3>&lt;p>随着时间的推移、需求的变更，一个 API 往往满足不了现有的需求，这时候就需要对 API 进行修改。对 API 进行修改时，不能影响其他调用系统的正常使用，这就要求 API 变更做到向下兼容，也就是新老版本共存。&lt;/p>
+&lt;p>但在实际场景中，很可能会出现同一个 API 无法向下兼容的情况。这时候最好的解决办法是从一开始就引入 API 版本机制，当不能向下兼容时，就引入一个新的版本，老的版本则保留原样。这样既能保证服务的可用性和安全性，同时也能满足新需求。&lt;/p>
+&lt;p>API 版本有不同的标识方法，在 RESTful API 开发中，通常将版本标识放在如下 3 个位置：&lt;/p>
+&lt;ul>
+&lt;li>URL 中，比如 &lt;code>/v1/users&lt;/code>。&lt;/li>
+&lt;li>HTTP Header 中，比如 &lt;code>Accept: vnd.example-com.foo+json; version=1.0&lt;/code>。&lt;/li>
+&lt;li>Form 参数中，比如 &lt;code>/users?version=v1&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;p>通常建议将版本标识放在 URL 中的，比如 /v1/users，这样做的好处是很直观，GitHub、Kubernetes、Etcd 等很多优秀的 API 均采用这种方式。&lt;/p>
+&lt;p>这里要注意，有些开发人员不建议将版本放在 URL 中，因为他们觉得不同的版本可以理解成同一种资源的不同表现形式，所以应该采用同一个 URI。对于这一点，没有严格的标准，根据项目实际需要选择一种方式即可。&lt;/p>
+&lt;h3 id="api-命名">
+&lt;a href="#api-%e5%91%bd%e5%90%8d">#&lt;/a>
+API 命名
+&lt;/h3>&lt;p>API 通常的命名方式有三种，分别是驼峰命名法（serverAddress）、蛇形命名法（server_address）和脊柱命名法（server-address）。&lt;/p>
+&lt;p>驼峰命名法和蛇形命名法都需要切换输入法，会增加操作的复杂性，也容易出错，所以这里建议用脊柱命名法。GitHub API 用的就是脊柱命名法，例如 &lt;a class="link" href="https://docs.github.com/en/rest/reference/actions#get-allowed-actions-for-an-organization" target="_blank" rel="noopener"
+>selected-actions&lt;/a>。&lt;/p>
+&lt;h3 id="统一分页过滤排序搜索功能">
+&lt;a href="#%e7%bb%9f%e4%b8%80%e5%88%86%e9%a1%b5%e8%bf%87%e6%bb%a4%e6%8e%92%e5%ba%8f%e6%90%9c%e7%b4%a2%e5%8a%9f%e8%83%bd">#&lt;/a>
+统一分页/过滤/排序/搜索功能
+&lt;/h3>&lt;p>REST 资源的查询接口，通常情况下都需要实现分页、过滤、排序、搜索功能，因为这些功能是每个 REST 资源都能用到的，所以可以实现为一个公共的 API 组件。下面来介绍下这些功能。&lt;/p>
+&lt;ul>
+&lt;li>分页：在列出一个 Collection 下所有的 Member 时，应该提供分页功能，例如 &lt;code>/users?offset=0&amp;amp;limit=20&lt;/code>（&lt;code>limit&lt;/code>，指定返回记录的数量；offset，指定返回记录的开始位置）。引入分页功能可以减少 API 响应的延时，同时可以避免返回太多条目，导致服务器/客户端响应特别慢，甚至导致服务器/客户端 crash 的情况。&lt;/li>
+&lt;li>过滤：如果用户不需要一个资源的全部状态属性，可以在 URI 参数里指定返回哪些属性，例如 &lt;code>/users?fields=email,username,address&lt;/code>。&lt;/li>
+&lt;li>排序：用户很多时候会根据创建时间或者其他因素，列出一个 Collection 中前 100 个 Member，这时可以在 URI 参数中指明排序参数，例如 &lt;code>/users?sort=age,desc&lt;/code>。&lt;/li>
+&lt;li>搜索：当一个资源的 Member 太多时，用户可能想通过搜索，快速找到所需要的 Member，或着想搜下有没有名字为 &lt;code>xxx&lt;/code> 的某类资源，这时候就需要提供搜索功能。搜索建议按模糊匹配来搜索。&lt;/li>
+&lt;/ul>
+&lt;h3 id="域名">
+&lt;a href="#%e5%9f%9f%e5%90%8d">#&lt;/a>
+域名
+&lt;/h3>&lt;p>API 的域名设置主要有两种方式：&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>https://example.com/api&lt;/code>，这种方式适合 API 将来不会有进一步扩展的情况，比如刚开始 &lt;code>example.com&lt;/code> 域名下只有一套 API 系统，未来也只有这一套 API 系统。&lt;/li>
+&lt;li>&lt;code>https://xxx.api.example.com&lt;/code>，如果 &lt;code>example.com&lt;/code> 域名下未来会新增另一个系统 API，这时候最好的方式是每个系统的 API 拥有专有的 API 域名，比如：&lt;code>storage.api.example.com&lt;/code>，&lt;code>network.api.example.com&lt;/code>。腾讯云的域名就是采用这种方式。&lt;/li>
+&lt;/ul>
+&lt;p>到这里，我们就将 REST 设计原则中的核心原则讲完了，这里有个需要注意的点：不同公司、不同团队、不同项目可能采取不同的 REST 设计原则，以上所列的基本上都是大家公认的原则。&lt;/p>
+&lt;p>REST 设计原则中，还有一些原则因为内容比较多，并且可以独立成模块，所以放在后面来讲。比如 RESTful API 安全性、状态返回码、认证等。&lt;/p>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93">#&lt;/a>
+总结
+&lt;/h2>&lt;p>本文详细介绍了 RESTful API 及 RESTful API 设计原则。REST 是一种 API 规范，而 RESTful API 则是满足这种规范的 API 接口，RESTful API 的核心是规范。&lt;/p>
+&lt;p>在 REST 规范中，资源通过 URI 来标识，资源名使用名词而不是动词，并且用名词复数表示，资源都是分为 Collection 和 Member 两种。RESTful API 中，分别使用 &lt;code>POST&lt;/code> 、 &lt;code>DELETE&lt;/code> 、 &lt;code>PUT&lt;/code> 、 &lt;code>GET&lt;/code> 来表示 REST 资源的增删改查，HTTP 方法、Collection、Member 不同组合会产生不同的操作，具体的映射你可以看下 &lt;strong>REST 资源操作映射为 HTTP 方法&lt;/strong> 部分的表格。&lt;/p>
+&lt;p>为了方便用户使用和理解，每个 RESTful API 的返回格式、错误和正确消息的返回格式，都应该保持一致。RESTful API 需要支持 API 版本，并且版本应该能够向前兼容，我们可以将版本号放在 URL 中、HTTP Header 中、Form 参数中，但这里我建议将版本号放在 URL 中，例如 &lt;code>/v1/users&lt;/code>，这种形式比较直观。&lt;/p>
+&lt;p>另外，我们可以通过脊柱命名法来命名 API 接口名。对于一个 REST 资源，其查询接口还应该支持分页/过滤/排序/搜索功能，这些功能可以用同一套机制来实现。 API 的域名可以采用 &lt;code>https://example.com/api&lt;/code> 和 &lt;code>https://xxx.api.example.com&lt;/code> 两种格式。&lt;/p></description></item></channel></rss>

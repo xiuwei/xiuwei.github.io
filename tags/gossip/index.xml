@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Gossip on 哈皮的自言自语</title><link>https://xiuwei.github.io/tags/gossip/</link><description>Recent content in Gossip on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Fri, 15 Mar 2024 21:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/tags/gossip/index.xml" rel="self" type="application/rss+xml"/><item><title>探秘 Gossip 协议：从节点交流到信息扩散</title><link>https://xiuwei.github.io/p/exploring-the-gossip-protocol/</link><pubDate>Fri, 15 Mar 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/exploring-the-gossip-protocol/</guid><description>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/cover.jpg" alt="Featured image of post 探秘 Gossip 协议：从节点交流到信息扩散" />&lt;h2 id="引言">
+&lt;a href="#%e5%bc%95%e8%a8%80">#&lt;/a>
+引言
+&lt;/h2>&lt;p>在分布式系统中，节点之间的信息传播是至关重要的。Gossip 协议作为一种简单而有效的分布式信息传播协议，被广泛应用于各种分布式系统中。本文将带领读者从零开始，通过具体的场景和例子，深入探讨 Gossip 协议的工作原理和应用场景。&lt;/p>
+&lt;h3 id="基本概念">
+&lt;a href="#%e5%9f%ba%e6%9c%ac%e6%a6%82%e5%bf%b5">#&lt;/a>
+基本概念
+&lt;/h3>&lt;p>Gossip，单词本身就是流言、八卦的意思。正如名字一样，Gossip 协议也被称为“流言协议”。它是一种分布式算法，用于在节点之间传递信息。在 Gossip 协议中，每个节点都可以将信息广播给它所知道的其他节点，这些节点又将该信息广播给它们所知道的其他节点，以此类推，直到整个网络都知道了这个信息。这种广播方式可以保证整个网络中的所有节点都能够及时地了解到最新的信息，并确保整个网络的一致性。&lt;/p>
+&lt;h3 id="背景与意义">
+&lt;a href="#%e8%83%8c%e6%99%af%e4%b8%8e%e6%84%8f%e4%b9%89">#&lt;/a>
+背景与意义
+&lt;/h3>&lt;p>关于这个协议的详细论文可查看参考文献一。Gossip 协议通常用于分布式系统中，例如 P2P 网络、分布式数据库、分布式文件系统等。在比特币网络中，也使用了 Gossip 协议来广播新的交易和块。Cassandra 使用的数据复制协议也是 Gossip 算法。还有 Akka、Redis Cluster 都有用到。&lt;/p>
+&lt;p>这个算法的最终目的还是一个：达到集群中所有节点的数据一致。只不过这是最终一致性。&lt;/p>
+&lt;h2 id="gossip-协议的基本原理">
+&lt;a href="#gossip-%e5%8d%8f%e8%ae%ae%e7%9a%84%e5%9f%ba%e6%9c%ac%e5%8e%9f%e7%90%86">#&lt;/a>
+Gossip 协议的基本原理
+&lt;/h2>&lt;p>这个协议看似简单，实则很复杂。一个一传十、十传百的工作方式真正在分布式的环境下应用起来不是那么容易的。下面我们探讨下其实现细节。&lt;/p>
+&lt;p>理解这个协议可以从三个维度：通信方式、协调机制、传播过程。&lt;/p>
+&lt;h3 id="通信方式">
+&lt;a href="#%e9%80%9a%e4%bf%a1%e6%96%b9%e5%bc%8f">#&lt;/a>
+通信方式
+&lt;/h3>&lt;p>这里所谓的通信方式就是集群中的节点如何建立通信。协议里支持三种：pull、push、push-pull。&lt;/p>
+&lt;h4 id="push-模式">
+&lt;a href="#push-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+push 模式
+&lt;/h4>&lt;p>节点 A 将数据 (key,value,version) 及对应的版本号推送给 B 节点，B 节点更新A中比自己新的数据&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1.png"
+width="762"
+height="150"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1_hu80bdea9f2e17428598a82c2794d3271a_80914_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1_hu80bdea9f2e17428598a82c2794d3271a_80914_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="508"
+data-flex-basis="1219px"
+>&lt;/p>
+&lt;p>在推模式中，当一个节点（源节点）需要传播信息时，它会在每个 Gossip 周期（把两个节点数据同步一次定义算作是一个周期）主动将自己的本地数据发送给随机选择的目标节点。目标节点收到信息后，将根据接收到的数据更新自己的本地数据存储。&lt;/p>
+&lt;p>推模式的优势在于，信息能够迅速传播到其他节点。但是，它也可能导致节点之间的通信开销较大，因为每个节点在每个周期内都会主动发送信息，即使目标节点可能已经拥有了这些信息。&lt;/p>
+&lt;h4 id="pull-模式">
+&lt;a href="#pull-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+pull 模式
+&lt;/h4>&lt;p>节点 A 仅将数据 key, version 推送给 B ，注意没有value哦， A 推送给 B 时，B 将本地比 A 新的数据（Key, value, version）推送给 A，A 更新本地，这一步相当于A在主动拉取 B 的值。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2.png"
+width="1121"
+height="364"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2_hu5b5e2d1aa69610bbea27985c83334705_157433_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2_hu5b5e2d1aa69610bbea27985c83334705_157433_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="307"
+data-flex-basis="739px"
+>&lt;/p>
+&lt;p>在拉模式中，节点不会主动发送信息。相反，它们会在每个 Gossip 周期主动向随机选择的目标节点请求数据。目标节点收到请求后，将自己的本地数据发送给请求节点。请求节点收到数据后，将根据接收到的数据更新自己的本地数据存储。&lt;/p>
+&lt;p>拉模式的优势在于，通信开销相对较小，因为节点只在需要时才会请求数据。然而，拉模式可能导致信息传播速度较慢，尤其是在节点数量较多的情况下。&lt;/p>
+&lt;h4 id="push-pull-模式">
+&lt;a href="#push-pull-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+push-pull 模式
+&lt;/h4>&lt;p>与 Pull 类似，只是多了一步，A 再将本地比B新的数据推送给 B，B 再更新本地。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3.png"
+width="727"
+height="240"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3_hubef17dfc6ca53ea1343e17d70fc95962_102397_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3_hubef17dfc6ca53ea1343e17d70fc95962_102397_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="302"
+data-flex-basis="727px"
+>&lt;/p>
+&lt;p>推拉模式结合了推模式和拉模式的优势，既能保证信息的快速传播，又能减小通信开销。在推拉模式中，当一个节点（源节点）需要传播信息时，它会在每个Gossip周期主动将自己的本地数据发送给随机选择的目标节点（推），同时也向目标节点请求数据（拉）。目标节点收到信息后，将根据接收到的数据更新自己的本地数据存储，并将自己的数据发送回源节点。&lt;/p>
+&lt;p>推拉模式的优势在于，它可以在保证信息传播速度的同时，降低通信开销。这种模式在大规模分布式系统中尤为突出。&lt;/p>
+&lt;h3 id="传播策略">
+&lt;a href="#%e4%bc%a0%e6%92%ad%e7%ad%96%e7%95%a5">#&lt;/a>
+传播策略
+&lt;/h3>&lt;p>了解完通信方式，再来聊聊传播策略，也就是所谓的如何实现最终的一致性。主要有两种：Anti-Entropy(反熵传播)和Rumor-Mongering(谣言传播)。&lt;/p>
+&lt;h4 id="anti-entropy反熵传播">
+&lt;a href="#anti-entropy%e5%8f%8d%e7%86%b5%e4%bc%a0%e6%92%ad">#&lt;/a>
+Anti-Entropy(反熵传播)
+&lt;/h4>&lt;p>Anti-Entropy 策略通过在节点之间交换数据的摘要来实现信息传播。在每个Gossip 周期内，节点会向随机选择的目标节点发送其本地数据的摘要。目标节点收到摘要后，会比较自己的本地数据和收到的摘要，找出不一致之处。然后，目标节点会向源节点请求缺失或过时的数据。通过这种方式，节点之间的数据最终将达到一致。Anti-Entropy 策略在通信开销和传播速度之间实现了一种平衡，适用于大规模分布式系统。&lt;/p>
+&lt;p>这种方式工作量大，一般用于新节点加入时同步更新数据的时候用得到。&lt;/p>
+&lt;ul>
+&lt;li>适用场景：执行反熵时，相关的节点都是已知的，而且节点数量不能太多，如果是一个动态变化或节点数比较多的分布式环境（比如在 DevOps 环境中检测节点故障，并动态维护集群节点状态），这时反熵就不适用了。&lt;/li>
+&lt;li>缺点：消息数量非常庞大，且无限制；通常只用于新加入节点的数据初始化。可以通过引入校验和（Checksum）等机制，降低需要对比的数据量和通讯消息等。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4.png"
+width="1098"
+height="382"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4_hu7d2b9098776a99c46c1d076f40d1026c_197930_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4_hu7d2b9098776a99c46c1d076f40d1026c_197930_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="Anti-Entropy(反熵传播)"
+class="gallery-image"
+data-flex-grow="287"
+data-flex-basis="689px"
+>&lt;/p>
+&lt;h4 id="rumor-mongering谣言传播">
+&lt;a href="#rumor-mongering%e8%b0%a3%e8%a8%80%e4%bc%a0%e6%92%ad">#&lt;/a>
+Rumor-Mongering(谣言传播)
+&lt;/h4>&lt;p>Rumor Mongering策略又称为传闻传播策略，它是一种概率论驱动的信息传播方法。在这种策略中，每个节点会在每个Gossip周期内随机选择一个或多个目标节点，并将信息发送给这些目标节点。当目标节点收到信息后，它们也会继续随机选择其他节点并将信息传播出去。这个过程会持续进行，直到信息在整个系统中被广泛传播。Rumor Mongering策略的优点是具有较低的通信开销和较高的可扩展性，但传播速度可能较慢。&lt;/p>
+&lt;p>这种方式工作量小，一般用于节点间数据增量的同步。&lt;/p>
+&lt;ul>
+&lt;li>适用场景：适合动态变化的分布式系统。&lt;/li>
+&lt;li>缺点：系统有一定的概率会不一致，通常用于节点间数据增量同步。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5.png"
+width="1098"
+height="703"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5_hu31ff4c4a99d3e5ad093a6f2ec21f663c_136383_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5_hu31ff4c4a99d3e5ad093a6f2ec21f663c_136383_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="Rumor-Mongering(谣言传播)"
+class="gallery-image"
+data-flex-grow="156"
+data-flex-basis="374px"
+>&lt;/p>
+&lt;h3 id="工作过程">
+&lt;a href="#%e5%b7%a5%e4%bd%9c%e8%bf%87%e7%a8%8b">#&lt;/a>
+工作过程
+&lt;/h3>&lt;p>Gossip 协议的工作流程可以简化描述为几个过程：&lt;/p>
+&lt;ul>
+&lt;li>种子节点在 Gossip 周期内散播消息&lt;/li>
+&lt;li>被感染节点随机选择N个邻接节点散播消息&lt;/li>
+&lt;li>每次散播消息都选择尚未发送过的节点进行散播&lt;/li>
+&lt;/ul>
+&lt;p>这个协议是建立在一定概率的情况下进行的，因为并不是所有节点都时时的能拿到数据，所以这个协议是一种最终一致性算法。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image.png"
+width="640"
+height="413"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image_hu5615acc8d4e95475c63c0632749b833a_190720_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image_hu5615acc8d4e95475c63c0632749b833a_190720_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="协议简易动画，来源于网络（详见参考文献二）"
+class="gallery-image"
+data-flex-grow="154"
+data-flex-basis="371px"
+>&lt;/p>
+&lt;h2 id="协议的应用于实践">
+&lt;a href="#%e5%8d%8f%e8%ae%ae%e7%9a%84%e5%ba%94%e7%94%a8%e4%ba%8e%e5%ae%9e%e8%b7%b5">#&lt;/a>
+协议的应用于实践
+&lt;/h2>&lt;h3 id="apache-cassandra">
+&lt;a href="#apache-cassandra">#&lt;/a>
+Apache Cassandra
+&lt;/h3>&lt;p>Apache Cassandra是一种高度可扩展的、分布式的NoSQL数据库，它在很大程度上受到了Amazon Dynamo的启发。Cassandra中使用Gossip协议来实现节点间的成员关系管理、故障检测、元数据信息传播以及负载均衡。&lt;/p>
+&lt;h4 id="成员关系管理和故障检测">
+&lt;a href="#%e6%88%90%e5%91%98%e5%85%b3%e7%b3%bb%e7%ae%a1%e7%90%86%e5%92%8c%e6%95%85%e9%9a%9c%e6%a3%80%e6%b5%8b">#&lt;/a>
+成员关系管理和故障检测
+&lt;/h4>&lt;p>在Cassandra中，节点通过Gossip协议来维护成员关系信息。在每个Gossip周期，节点会与随机选择的其他节点交换成员关系信息。这样，节点可以了解其他节点的在线状态和故障情况。此外，Cassandra使用了一种名为Phi Accrual Failure Detector的故障检测机制，它依赖于Gossip协议收集的节点信息来检测节点的可用性。&lt;/p>
+&lt;h4 id="元数据信息传播">
+&lt;a href="#%e5%85%83%e6%95%b0%e6%8d%ae%e4%bf%a1%e6%81%af%e4%bc%a0%e6%92%ad">#&lt;/a>
+元数据信息传播
+&lt;/h4>&lt;p>Cassandra中的节点需要维护一定量的元数据，例如分区信息、副本信息和令牌（Token）分配。Gossip协议被用于在节点之间传播这些元数据。在每个Gossip周期内，节点会将自己的元数据发送给随机选择的其他节点。这些节点在收到元数据后，会更新自己的本地数据存储，并将更新后的元数据传播给其他节点。这个过程会持续进行，直到元数据在整个系统中被广泛传播。&lt;/p>
+&lt;h3 id="redis-cluster">
+&lt;a href="#redis-cluster">#&lt;/a>
+Redis Cluster
+&lt;/h3>&lt;p>Gossip 协议被广泛应用于各种分布式系统中，下面我们将介绍在Redis Cluster的应用场景，并将 Gossip 协议与真实场景结合起来。&lt;/p>
+&lt;p>Redis Cluster 是一个分布式的 Redis 解决方案，它允许将数据分布在多个节点上以提高性能和可用性。Gossip 协议用于节点之间的发现和状态同步，每个节点都了解整个集群的拓扑结构以及其他节点的状态信息，以便正确地路由请求和保证数据的一致性。&lt;/p>
+&lt;p>想象一下一个大型的工厂，里面有各种各样的生产线。每条生产线都有一个负责人，他们会定期与周围的生产线负责人交流，分享自己所在生产线的状态和工作情况。这样，即使有一部分生产线出现了问题，其他生产线也能够通过周围生产线的信息了解到整个工厂的状态。&lt;/p>
+&lt;p>Gossip 协议在 Redis Cluster 中的应用主要分为两个方面：&lt;/p>
+&lt;h4 id="节点发现">
+&lt;a href="#%e8%8a%82%e7%82%b9%e5%8f%91%e7%8e%b0">#&lt;/a>
+节点发现
+&lt;/h4>&lt;p>当一个新的节点加入到 Redis Cluster 中时，它需要能够自动地发现其他节点，并加入到集群中。这就需要一种机制来实现节点之间的自动发现，而 Gossip 协议恰好提供了这样的功能。每个节点会周期性地与其他节点交换信息，包括自己的地址和状态，从而使新加入的节点能够了解到整个集群的拓扑结构，并与其他节点建立连接。&lt;/p>
+&lt;h4 id="状态同步">
+&lt;a href="#%e7%8a%b6%e6%80%81%e5%90%8c%e6%ad%a5">#&lt;/a>
+状态同步
+&lt;/h4>&lt;p>在 Redis Cluster 中，节点之间需要保持数据的一致性，即使某个节点发生了故障或者新的节点加入。为了实现这一点，每个节点都需要了解其他节点的状态信息，如节点的存活状态、负载情况等。通过 Gossip 协议，每个节点可以定期地交换状态信息，从而保持集群中所有节点的状态同步，并及时地做出相应的调整和处理。&lt;/p>
+&lt;p>总的来说，Redis Cluster 中的 Gossip 协议通过节点之间的周期性交流信息，实现了节点的发现和状态同步，从而保证了集群的高可用性和一致性。&lt;/p>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93">#&lt;/a>
+总结
+&lt;/h2>&lt;p>文中介绍了 Gossip 协议的一些情况。这里简单总结下其优缺点：&lt;/p>
+&lt;h3 id="优势">
+&lt;a href="#%e4%bc%98%e5%8a%bf">#&lt;/a>
+优势
+&lt;/h3>&lt;ul>
+&lt;li>快速传播：由于Gossip协议基于随机节点选择进行信息交换，信息可以在很短的时间内传播到大部分节点，实现快速信息传播。&lt;/li>
+&lt;li>容错性：Gossip协议具有较高的容错性，即使某个节点发生故障或者无法与其他节点通信，信息仍然可以通过其他路径传播。&lt;/li>
+&lt;li>抗拥塞：随机选择目标节点有助于避免在特定节点上产生通信瓶颈。这使得Gossip协议可以在大规模分布式系统中高效运行。&lt;/li>
+&lt;li>可扩展性：Gossip协议的设计使得它可以很容易地适应大规模分布式系统，具有较好的可扩展性。&lt;/li>
+&lt;li>简单易实现：Gossip协议的设计和实现相对简单，易于在各种分布式系统中进行部署。&lt;/li>
+&lt;/ul>
+&lt;h3 id="劣势">
+&lt;a href="#%e5%8a%a3%e5%8a%bf">#&lt;/a>
+劣势
+&lt;/h3>&lt;ul>
+&lt;li>最终一致性：Gossip协议通常实现的是最终一致性，而不是强一致性。在某些应用场景中，这可能导致数据在短时间内不一致。&lt;/li>
+&lt;li>带宽消耗：由于Gossip协议的信息交换是基于概率的，可能会导致部分信息多次在节点之间传播，增加了网络带宽消耗。&lt;/li>
+&lt;li>信息冗余：Gossip协议可能会导致信息冗余，因为每个节点都需要存储关于其他节点的部分信息。&lt;/li>
+&lt;li>难以保证完全一致性：在某些情况下，由于网络延迟、故障等因素，Gossip协议可能难以保证系统中所有节点的完全一致性。&lt;/li>
+&lt;li>参数调优：Gossip协议的性能在很大程度上取决于参数设置，例如Gossip周期、目标节点数量等。在实际应用中，需要根据系统的特点和需求进行参数调优，以获得最佳性能。&lt;/li>
+&lt;/ul>
+&lt;h2 id="参考文献">
+&lt;a href="#%e5%8f%82%e8%80%83%e6%96%87%e7%8c%ae">#&lt;/a>
+参考文献
+&lt;/h2>&lt;p>&lt;a class="link" href="https://www.cs.cornell.edu/home/rvr/papers/flowgossip.pdf" target="_blank" rel="noopener"
+>Efficient Reconciliation and Flow Control for Anti-Entropy Protocols&lt;/a>
+&lt;a class="link" href="https://pstree.cc/wtf-is-gossip/" target="_blank" rel="noopener"
+>Wtf is Gossip Protocols?&lt;/a>
+&lt;a class="link" href="https://zhuanlan.zhihu.com/p/41228196" target="_blank" rel="noopener"
+>P2P 网络核心技术：Gossip 协议&lt;/a>&lt;/p></description></item></channel></rss>

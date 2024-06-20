@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Microservice on 哈皮的自言自语</title><link>https://xiuwei.github.io/categories/microservice/</link><description>Recent content in Microservice on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Sat, 20 Apr 2024 21:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/categories/microservice/index.xml" rel="self" type="application/rss+xml"/><item><title>实战指南：在 Kubernetes 上部署 Spring Boot 微服务并实施健康检查</title><link>https://xiuwei.github.io/p/kubernetes-springboot-health-check/</link><pubDate>Sat, 20 Apr 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/kubernetes-springboot-health-check/</guid><description>&lt;img src="https://xiuwei.github.io/p/kubernetes-springboot-health-check/cover.jpg" alt="Featured image of post 实战指南：在 Kubernetes 上部署 Spring Boot 微服务并实施健康检查" />&lt;h2 id="1-引言">
+&lt;a href="#1-%e5%bc%95%e8%a8%80">#&lt;/a>
+1. 引言
+&lt;/h2>&lt;p>在云原生应用开发中，健康检查是确保微服务可靠性和稳定性的关键环节。特别是在 Kubernetes 这样的容器编排平台上，通过健康检查可以有效地监控和管理应用程序的状态，及时发现并处理潜在的故障情况，从而确保整个系统的正常运行。&lt;/p>
+&lt;p>而 Spring Boot 作为一种流行的 Java 微服务框架，其在 Kubernetes 上的部署和健康检查配置也是开发者们关注的焦点。本文将针对这一问题，提供一套完整的实战指南，帮助读者深入了解在 Kubernetes 环境中部署 Spring Boot 微服务并实施健康检查的步骤和方法。&lt;/p>
+&lt;h2 id="2-原理">
+&lt;a href="#2-%e5%8e%9f%e7%90%86">#&lt;/a>
+2. 原理
+&lt;/h2>&lt;h3 id="21-kubernetes健康检查机制">
+&lt;a href="#21-kubernetes%e5%81%a5%e5%ba%b7%e6%a3%80%e6%9f%a5%e6%9c%ba%e5%88%b6">#&lt;/a>
+2.1 Kubernetes健康检查机制
+&lt;/h3>&lt;p>Kubernetes中的健康检查主要使用 就绪性探针 &lt;code>readinessProbe&lt;/code> 、存活性探针 &lt;code>livenessProbe&lt;/code> 和启动探针 &lt;code>startupProbe&lt;/code> 来实现，service即为负载均衡，k8s保证 service 后面的 pod 都可用，是k8s中自愈能力的主要手段，主要基于这两种探测机制，可以实现如下需求：&lt;/p>
+&lt;ul>
+&lt;li>异常实例自动剔除，并重启新实例。&lt;/li>
+&lt;li>多种类型探针检测，保证异常pod不接入流量。&lt;/li>
+&lt;li>不停机部署，更安全的滚动升级。&lt;/li>
+&lt;/ul>
+&lt;h4 id="211-探针类型">
+&lt;a href="#211-%e6%8e%a2%e9%92%88%e7%b1%bb%e5%9e%8b">#&lt;/a>
+2.1.1 探针类型
+&lt;/h4>&lt;p>针对运行中的容器，&lt;code>kubelet&lt;/code> 可以选择是否执行以下三种探针，以及如何针对探测结果作出反应：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>livenessProbe:&lt;/strong> 指示容器是否正在运行。如果存活态探测失败，则 kubelet 会杀死容器， 并且容器将根据其&lt;code>重启策略&lt;/code>进行重启。如果容器不提供存活探针，则默认状态为 Success。&lt;/li>
+&lt;li>&lt;strong>readinessProbe:&lt;/strong> 指示容器是否准备好为请求提供服务。如果就绪态探测失败， 端点控制器将从与 Pod 匹配的所有服务的端点列表中删除该 Pod 的 IP 地址。初始延迟之前的就绪态的状态值默认为 &lt;code>Failure&lt;/code>。 如果容器不提供就绪态探针，则默认状态为 &lt;code>Success。&lt;/code>&lt;/li>
+&lt;li>&lt;strong>startupProbe:&lt;/strong> 指示容器中的应用是否已经启动。如果提供了启动探针，则所有其他探针都会被 禁用，直到此探针成功为止。如果启动探测失败，kubelet 将杀死容器，而容器依其&lt;code>重启策略&lt;/code>进行重启。 如果容器没有提供启动探测，则默认状态为 &lt;code>Success。&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;h4 id="212-探针结果">
+&lt;a href="#212-%e6%8e%a2%e9%92%88%e7%bb%93%e6%9e%9c">#&lt;/a>
+2.1.2 探针结果
+&lt;/h4>&lt;p>每次探测都将获得以下三种结果之一：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>Success（成功）:&lt;/strong> 容器通过了诊断。&lt;/li>
+&lt;li>&lt;strong>Failure（失败）:&lt;/strong> 容器未通过诊断。&lt;/li>
+&lt;li>&lt;strong>Unknown（未知）:&lt;/strong> 诊断失败，因此不会采取任何行动。&lt;/li>
+&lt;/ul>
+&lt;h4 id="213-探针检查机制">
+&lt;a href="#213-%e6%8e%a2%e9%92%88%e6%a3%80%e6%9f%a5%e6%9c%ba%e5%88%b6">#&lt;/a>
+2.1.3 探针检查机制
+&lt;/h4>&lt;p>使用探针来检查容器有四种不同的方法。 每个探针都必须准确定义为这四种机制中的一种：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>exec：&lt;/strong> 在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。&lt;/li>
+&lt;li>&lt;strong>grpc：&lt;/strong> 使用 gRPC 执行一个远程过程调用。 目标应该实现 gRPC 健康检查。 如果响应的状态是 &amp;ldquo;SERVING&amp;rdquo;，则认为诊断成功。&lt;/li>
+&lt;li>&lt;strong>httpGet：&lt;/strong> 对容器的 IP 地址上指定端口和路径执行 HTTP GET 请求。如果响应的状态码大于等于 200 且小于 400，则诊断被认为是成功的。&lt;/li>
+&lt;li>&lt;strong>tcpSocket：&lt;/strong> 对容器的 IP 地址上的指定端口执行 TCP 检查。如果端口打开，则诊断被认为是成功的。 如果远程系统（容器）在打开连接后立即将其关闭，这算作是健康的。&lt;/li>
+&lt;/ul>
+&lt;h3 id="22-spring-boot对kubernetes容器探针的支持">
+&lt;a href="#22-spring-boot%e5%af%b9kubernetes%e5%ae%b9%e5%99%a8%e6%8e%a2%e9%92%88%e7%9a%84%e6%94%af%e6%8c%81">#&lt;/a>
+2.2 Spring Boot对Kubernetes容器探针的支持
+&lt;/h3>&lt;p>Spring Boot 2.3 版本引入了容器探针功能，其中包括了 &lt;code>/actuator/health/liveness&lt;/code> 和 &lt;code>/actuator/health/readiness&lt;/code> 这两个健康检查路径。这些路径是为了更好地支持部署在 Kubernetes 等容器环境中的应用程序。&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>/actuator/health/liveness&lt;/code> 用于存活性检查，用于确定应用程序是否仍然在运行。&lt;/li>
+&lt;li>&lt;code>/actuator/health/readiness&lt;/code> 用于就绪性检查，用于确定应用程序是否准备好接收流量。&lt;/li>
+&lt;/ul>
+&lt;p>Spring Boot Actuator 会自动将这两个路径暴露出来，并通过它们来执行相应的健康检查。这样，当你在 Kubernetes 中部署 Spring Boot 应用程序时，Kubernetes 可以利用这些路径来确定容器是否健康和准备好接收流量。&lt;/p>
+&lt;p>这种集成简化了在 Kubernetes 中部署 Spring Boot 应用程序的流程，并提高了应用程序的可靠性和可用性。&lt;/p>
+&lt;h4 id="221-spring-boot-如何识别k8s环境">
+&lt;a href="#221-spring-boot-%e5%a6%82%e4%bd%95%e8%af%86%e5%88%abk8s%e7%8e%af%e5%a2%83">#&lt;/a>
+2.2.1 Spring Boot 如何识别k8s环境
+&lt;/h4>&lt;p>Spring Boot 通过检查环境中的 &lt;code>&amp;quot;*_SERVICE_HOST&amp;quot;&lt;/code> 和 &lt;code>&amp;quot;*_SERVICE_PORT&amp;quot;&lt;/code> 变量来自动检测 Kubernetes 部署环境。也可以使用 &lt;code>spring.main.cloud-platform&lt;/code> 配置属性覆盖此检测。&lt;/p>
+&lt;p>Spring Boot 识别到 Kubernetes 环境后，Spring Boot Actuator 会自动将&lt;code>/actuator/health/liveness&lt;/code> 和 &lt;code>/actuator/health/readiness&lt;/code>这两个端点暴露出来。&lt;/p>
+&lt;blockquote>
+&lt;p>小技巧：本地验证这一特性可以通过手动设置 &lt;em>KUBERNETES_SERVICE_HOST&lt;/em> 和 &lt;em>KUBERNETES_SERVICE_PORT&lt;/em> 这两个环境变量来开启存活和就绪检查。访问 &lt;em>http://localhost:8080/actuator/health/liveness&lt;/em> 响应200状态码时代表已开启。&lt;/p>
+&lt;/blockquote>
+&lt;h4 id="222-spring-boot-与k8s容器探针的结合">
+&lt;a href="#222-spring-boot-%e4%b8%8ek8s%e5%ae%b9%e5%99%a8%e6%8e%a2%e9%92%88%e7%9a%84%e7%bb%93%e5%90%88">#&lt;/a>
+2.2.2 Spring Boot 与k8s容器探针的结合
+&lt;/h4>&lt;p>默认情况下，Spring Boot 管理应用程序可用性状态。如果部署在 Kubernetes 环境中，Actuator 会从收集“Liveness”和“Readiness”信息，并将该信息用于各类专用的 &lt;code>HealthIndicators&lt;/code>。&lt;/p>
+&lt;p>Kubernetes 存活与就绪检查配置示例：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">livenessProbe&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">httpGet&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">path&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="s2">&amp;#34;/actuator/health/liveness&amp;#34;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">&amp;lt;actuator-port&amp;gt;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">failureThreshold&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">periodSeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">readinessProbe&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">httpGet&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">path&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="s2">&amp;#34;/actuator/health/readiness&amp;#34;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">&amp;lt;actuator-port&amp;gt;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">failureThreshold&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">periodSeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;blockquote>
+&lt;p>&lt;actuator-port> 应设置为 actuator endpoints 的端口。它可能是 Web 服务器端口或为 Actuator 单独设置的端口。通过 &amp;ldquo;management.server.port&amp;rdquo; 配置指定。&lt;/p>
+&lt;/blockquote>
+&lt;h4 id="223-spring-boot-生命周期与探测状态">
+&lt;a href="#223-spring-boot-%e7%94%9f%e5%91%bd%e5%91%a8%e6%9c%9f%e4%b8%8e%e6%8e%a2%e6%b5%8b%e7%8a%b6%e6%80%81">#&lt;/a>
+2.2.3 Spring Boot 生命周期与探测状态
+&lt;/h4>&lt;p>Kubernetes Probes 支持的一个重要方面是它与应用程序生命周期的一致性。（应用程序的内存中内部状态）和实际探针（公开该状态）之间存在显着差异。根据应用程序生命周期的阶段，探测器可能不可用。&lt;/p>
+&lt;p>Spring Boot 在启动和关闭期间发布 &lt;em>Application Events&lt;/em>，探测器可以监听此类事件并暴露 &lt;em>AvailabilityState&lt;/em> 信息。&lt;/p>
+&lt;p>下表显示了AvailabilityState和HTTP连接器在不同阶段的状态。&lt;/p>
+&lt;p>当 Spring Boot 应用程序启动时：
+&lt;img src="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image.png"
+width="1990"
+height="542"
+srcset="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image_hub8d9176f3a8360729b7465a357c86566_137478_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/kubernetes-springboot-health-check/image_hub8d9176f3a8360729b7465a357c86566_137478_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="367"
+data-flex-basis="881px"
+>&lt;/p>
+&lt;p>当 Spring Boot 应用程序 关闭时:
+&lt;img src="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image-1.png"
+width="1948"
+height="498"
+srcset="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image-1_hu05efa868d7dab2ee38f7d14b4f8433cc_122400_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/kubernetes-springboot-health-check/image-1_hu05efa868d7dab2ee38f7d14b4f8433cc_122400_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="391"
+data-flex-basis="938px"
+>&lt;/p>
+&lt;h2 id="3-准备工作">
+&lt;a href="#3-%e5%87%86%e5%a4%87%e5%b7%a5%e4%bd%9c">#&lt;/a>
+3. 准备工作
+&lt;/h2>&lt;p>在开始部署 Spring Boot 微服务到 Kubernetes 之前，我们首先需要准备好以下工作环境和所需工具：&lt;/p>
+&lt;ul>
+&lt;li>一个运行正常的 Kubernetes 集群，可以是本地的 minikube 集群或者云上的托管 Kubernetes 服务。&lt;/li>
+&lt;li>已经构建好的 Spring Boot 应用程序的 Docker 镜像，可以通过 Dockerfile 构建，或者使用 Maven 插件和 Docker 插件直接构建。&lt;/li>
+&lt;li>Kubernetes 部署和服务资源的 YAML 配置文件，用于定义应用程序的部署、服务和健康检查配置。&lt;/li>
+&lt;/ul>
+&lt;h2 id="4-在-kubernetes-中部署-spring-boot-微服务">
+&lt;a href="#4-%e5%9c%a8-kubernetes-%e4%b8%ad%e9%83%a8%e7%bd%b2-spring-boot-%e5%be%ae%e6%9c%8d%e5%8a%a1">#&lt;/a>
+4. 在 Kubernetes 中部署 Spring Boot 微服务
+&lt;/h2>&lt;p>在准备工作完成之后，我们就可以开始在 Kubernetes 中部署 Spring Boot 微服务了。首先，我们需要创建一个 Kubernetes 部署资源，用来描述应用程序的容器镜像、副本数等信息。接下来，我们再创建一个 Kubernetes 服务资源，用来暴露应用程序的网络端口，以便其他服务可以访问到该应用程序。让我们一起来看看具体的操作步骤：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>创建 Kubernetes 部署资源：&lt;/strong> 在 Kubernetes 中，部署资源用于定义应用程序的部署策略和运行配置。我们可以通过一个 YAML 配置文件来创建一个部署资源，示例配置文件如下所示：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">apiVersion&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">apps/v1&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">kind&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">Deployment&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">metadata&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">name&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">spec&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">replicas&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">3&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">selector&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">matchLabels&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">app&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">template&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">metadata&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">labels&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">app&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">spec&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">containers&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>- &lt;span class="nt">name&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">image&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">your-docker-registry/my-springboot-app:latest&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">ports&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>- &lt;span class="nt">containerPort&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">8080&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>在这个示例中，我们定义了一个名为 &lt;code>my-springboot-app&lt;/code> 的 Deployment 资源，指定了要运行的容器镜像和副本数，并暴露了容器的 8080 端口。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>创建 Kubernetes 服务资源：&lt;/strong> 在 Kubernetes 中，服务资源用于定义应用程序的网络访问方式和负载均衡策略。我们同样可以通过一个 YAML 配置文件来创建一个服务资源，示例配置文件如下所示：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">apiVersion&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">v1&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">kind&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">Service&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">metadata&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">name&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app-service&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">spec&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">selector&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">app&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">ports&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>- &lt;span class="nt">protocol&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">TCP&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">80&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">targetPort&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">8080&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">type&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">LoadBalancer&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>在这个示例中，我们定义了一个名为 &lt;code>my-springboot-app-service&lt;/code> 的 Service 资源，通过 &lt;code>selector&lt;/code> 字段指定了要负载均衡的 Deployment，并将容器的 8080 端口映射到了服务的 80 端口。&lt;/p>
+&lt;p>通过上述步骤，我们就可以成功地在 Kubernetes 中部署了一个运行 Spring Boot 微服务的容器应用程序。接下来，我们将重点关注如何配置和实施健康检查，以确保应用程序的稳定性和可靠性。&lt;/p>
+&lt;h2 id="5-配置健康检查">
+&lt;a href="#5-%e9%85%8d%e7%bd%ae%e5%81%a5%e5%ba%b7%e6%a3%80%e6%9f%a5">#&lt;/a>
+5. 配置健康检查
+&lt;/h2>&lt;p>在 Kubernetes 中，健康检查通过 liveness 探针和 readiness 探针来实现。liveness 探针用于检查应用程序是否处于运行状态，而 readiness 探针用于检查应用程序是否已准备好接收流量。下面我们将分别介绍如何在 Spring Boot 应用程序中实现这两种探针，并在 Kubernetes 中进行配置。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>实现 liveness 探针：&lt;/strong> 在 Spring Boot 应用程序中实现 liveness 探针非常简单，我们只需创建一个端点接口，用于检查应用程序的运行状态即可。例如，我们可以创建一个 &lt;code>/actuator/health&lt;/code> 的端点，用于返回应用程序的健康状态。在 Spring Boot 应用程序中，我们可以通过 Spring Boot Actuator 模块来实现这一功能。在 &lt;code>application.properties&lt;/code> 配置文件中添加以下配置：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-properties" data-lang="properties">&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.probes.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoints.web.exposure.include&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">health&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>然后，我们就可以访问 &lt;code>/actuator/health&lt;/code> 端点来检查应用程序的运行状态了。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>实现 readiness 探针：&lt;/strong> 与 liveness 探针类似，实现 readiness 探针也很简单。我们可以创建一个类似的端点接口，用于检查应用程序是否已准备好接收流量。例如，我们可以创建一个 &lt;code>/actuator/readiness&lt;/code> 的端点，用于返回应用程序的就绪状态。同样地，我们可以通过 Spring Boot Actuator 模块来实现这一功能，在 &lt;code>application.properties&lt;/code> 配置文件中添加以下配置：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-properties" data-lang="properties">&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.probes.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.probes.include&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">readiness&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>然后，我们就可以访问 &lt;code>/actuator/readiness&lt;/code> 端点来检查应用程序的就绪状态了。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>在 Kubernetes 中配置健康检查：&lt;/strong> 在 Kubernetes 的部署配置文件中，我们可以通过 &lt;code>livenessProbe&lt;/code> 和 &lt;code>readinessProbe&lt;/code> 字段来定义容器的健康检查。例如，我们可以使用以下配置来定义一个 liveness 探针：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">livenessProbe&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">httpGet&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">path&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">/actuator/health&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">8080&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">initialDelaySeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">30&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">periodSeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">10&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>这个配置将会在容器启动后等待 30 秒后开始进行 liveness 探测，每隔 10 秒进行一次探测，检查 &lt;code>/actuator/health&lt;/code> 端点的返回状态。&lt;/p>
+&lt;p>类似地，我们也可以使用类似的配置来定义一个 readiness 探针。&lt;/p>
+&lt;p>通过上述步骤，我们就成功地在 Spring Boot 应用程序中实现了 liveness 探针和 readiness 探针，并在 Kubernetes 中进行了相应的配置。接下来，我们将进行实战演练，验证健康检查的配置是否生效，以及如何使用 kubectl 命令来查看应用程序的健康状态。&lt;/p>
+&lt;h2 id="6-验证">
+&lt;a href="#6-%e9%aa%8c%e8%af%81">#&lt;/a>
+6. 验证
+&lt;/h2>&lt;p>在本节中，我们将演示如何使用 kubectl 命令来查看应用程序的健康状态，并验证健康检查的配置是否生效。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>查看 liveness 探针状态：&lt;/strong> 使用以下命令可以查看应用程序的 liveness 探针状态：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">kubectl describe pod &amp;lt;pod_name&amp;gt;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>该命令将输出包含容器状态和事件的详细信息。在输出结果中，可以找到有关 liveness 探针的相关信息，例如探针的执行结果和最后一次执行的时间戳。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>验证 readiness 探针状态：&lt;/strong> 使用以下命令可以验证应用程序的 readiness 探针状态：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">kubectl get pods
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>该命令将列出所有运行中的 Pod，并显示它们的状态。通过观察 READY 列中的值，可以了解到每个 Pod 是否已准备好接收流量。&lt;/p>
+&lt;p>通过上述命令，我们可以轻松地验证健康检查的配置是否生效，并了解应用程序的健康状态。如果出现健康检查失败或异常的情况，我们还可以使用 kubectl 命令来进行故障排除和调试，以找出问题的根源并及时处理。&lt;/p>
+&lt;h2 id="7-总结">
+&lt;a href="#7-%e6%80%bb%e7%bb%93">#&lt;/a>
+7. 总结
+&lt;/h2>&lt;p>通过本文的实战指南，我们深入探讨了在 Kubernetes 环境中部署 Spring Boot 微服务并实施健康检查的方法和步骤。我们首先介绍了健康检查的概念和重要性，然后详细讲解了如何在 Spring Boot 应用程序中实现 liveness 探针和 readiness 探针，并在 Kubernetes 中进行配置。最后，我们进行了实战演练，验证了健康检查的配置是否生效，并了解了如何使用 kubectl 命令来查看应用程序的健康状态和进行故障排除。&lt;/p>
+&lt;p>通过正确地配置和实施健康检查，我们可以有效地监控和管理应用程序的状态，及时发现并处理潜在的故障情况，从而确保整个系统的正常运行。希望本文对您理解和掌握云原生健康检查的实践技巧有所帮助，也欢迎您在实际应用中进行进一步的尝试和探索。&lt;/p>
+&lt;h2 id="参考资料">
+&lt;a href="#%e5%8f%82%e8%80%83%e8%b5%84%e6%96%99">#&lt;/a>
+参考资料
+&lt;/h2>&lt;ul>
+&lt;li>&lt;a class="link" href="https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-lifecycle/#container-probes" target="_blank" rel="noopener"
+>https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-lifecycle/#container-probes&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes" target="_blank" rel="noopener"
+>https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints.kubernetes-probes" target="_blank" rel="noopener"
+>https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints.kubernetes-probes&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment.cloud.kubernetes.container-lifecycle" target="_blank" rel="noopener"
+>https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment.cloud.kubernetes.container-lifecycle&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://docs.spring.io/spring-boot/docs/current/reference/html/web.html#web.graceful-shutdown" target="_blank" rel="noopener"
+>https://docs.spring.io/spring-boot/docs/current/reference/html/web.html#web.graceful-shutdown&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Spring Cloud应用如何平滑迁移至IPv6?</title><link>https://xiuwei.github.io/p/ip-protocal-migration/</link><pubDate>Tue, 03 Jan 2023 12:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/ip-protocal-migration/</guid><description>&lt;img src="https://xiuwei.github.io/p/ip-protocal-migration/cover.jpg" alt="Featured image of post Spring Cloud应用如何平滑迁移至IPv6?" />&lt;h2 id="背景">
+&lt;a href="#%e8%83%8c%e6%99%af">#&lt;/a>
+背景
+&lt;/h2>&lt;p>IPv4 协议（后文简称 IPv4）为互联网的发展与普及做出了重要贡献，但近年来，随着应用程序、数据和 IT 服务的爆炸式增长。当初协议设计过程中用来描述 IP 地址所采用的 32 位二进制数格式的 IPv4 地址已经于 2011 年&lt;a class="link" href="https://www.infoq.cn/article/vpdcmupcw3mev3l2kx41" target="_blank" rel="noopener"
+>[1]&lt;/a>被申请耗尽，从那时起，全世界都已经处于无新地址可用的局面。&lt;/p>
+&lt;p>IPv6 协议（后文简称 IPv6）作为 IPv4 之后被采用的下一代互联网协议，相比 IPv4 协议中采用 32 位来表示 IP 地址，其地址表示位数扩充到了 128 位，地址数量是 IPv4 所能提供的 2 的 96 次方倍。简单看数字可能显得不太直观，换成一句描述 IPv6 地址之多更直观和经典的话：“采用 128 位表示地址的 IPv6 可以为地球上的每一粒沙子都分配一个 IP 地址”！此外，IPv6 协议其不仅可以解决 IPv4 协议中的地址短缺问题，同时也能为互联网提供更高效、更安全的网络通信。IPv6 协议在网络通信中提供了许多新的功能和优势。例如，在数据传输和路由方面，其通过新的设计提高了效率和可靠性，减少了网络拥堵和数据包丢失的情况。此外，在安全领域，其内置对 IPSec 的支持，可以更好地保护网络中的数据传输安全，防止黑客攻击和窃取数据。
+作为下一代互联网协议，向 IPv6 迁移是未来的大势所趋。在我国，从 2014 年开始相关机构已经逐步停止向新用户和应用分配 IPv4 地址，开始全面商用 IPv6 协议(计算机网络（第七版）谢希仁)。在政府引导测，近年来，陆续也出台了一系列相关指导文件例如：2017 年国务院发布的《&lt;a class="link" href="http://www.gov.cn/zhengce/2017-11/26/content_5242389.htm" target="_blank" rel="noopener"
+>推进互联网协议第六版（IPv6）规模部署行动计划&lt;/a>》、2021 年工业与信息化部发布的《&lt;a class="link" href="http://www.xinhuanet.com/info/2021-07/09/c_1310052164.htm" target="_blank" rel="noopener"
+>IPv6 流量提升三年专项行动计划（2021-2023 年）&lt;/a>》、2021 年网信办发布的&lt;a class="link" href="http://www.gov.cn/zhengce/zhengceku/2021-07/23/content_5626963.htm" target="_blank" rel="noopener"
+>《关于推动 IPv6 规模部署的指导意见》&lt;/a>等不断地在引导企业从 IPv4 协议向 IPv6 协议迁移。
+但由于当前互联网中 IPv4 协议的应用规模非常大，对于用户来说，没办法通过规定一个时间日期，从那一刻开始，所有互联网上的设备全部使用 IPv6，这是不现实的。一次性迁移不仅在基础设施层面不可行，对企业用户来说，就算基础设施都能准备完毕，让其将少则上百，多则成千上万的应用实例在一段时间内一次性停机进行协议栈迁移，无论是在风险上，还是成本上，对企业用户来说都是难以接受的！既然无法一步到位，渐进式的 IP 地址迁移成为当前的主流选择。接下来本文将介绍一些主流渐进式的 IP 地址迁移方法。&lt;/p>
+&lt;h2 id="迁移方案">
+&lt;a href="#%e8%bf%81%e7%a7%bb%e6%96%b9%e6%a1%88">#&lt;/a>
+迁移方案
+&lt;/h2>&lt;p>虽然 IPv6 协议具有许多优势，但是其推广和应用仍然面临许多挑战。IPv6 的普及需要全球范围内的配套基础措施和支持，包括网络设备的更新、人员培训和政策法规的推进等等。同时，IPv6 与 IPv4 之间的兼容性也是一个重要的问题，需要通过技术手段和过渡机制来解决。
+常见的 IP 协议渐进式迁移共存方案，主要有双栈（Dual Stack）、隧道（Tunneling）等技术。其中，双栈技术是目前业界应用较为广泛的一种 IPv4/IPv6 共存的一种技术，其目的是在互联网完全过度到 IPv6 之前，通过为设备安装 IPv4 和 IPv6 双协议栈。具有双栈的设备可以实现与单 IPv4、单 IPv6 或者双栈的设备进行通信。通过让各种协议栈能共存，渐进式地进行 IP 协议栈的迁移。像 Kubernetes 很早也已经对&lt;a class="link" href="https://kubernetes.io/zh-cn/docs/concepts/services-networking/dual-stack/" target="_blank" rel="noopener"
+>双栈功能&lt;/a>进行了支持。
+隧道技术是一种把 IPv6 地址封装到 IPv4 数据报中的方法，当数据从 IPv6 单协议栈发出后，在经过 IPv4 单栈网络环境的过程中，将 IPv6 地址封装到 IPv4 数据报作为 IPv4 数据报内容后，通过 IPv4 协议栈进行传输。在经过 IPv4 单栈环境后，来到 IPv6 单栈环境时，再将数据报中的 IPv6 数据段内容解析出来，构造新的 IPv6 数据报在 IPv6 协议栈环境中进行传输。&lt;/p>
+&lt;h3 id="微服务双栈迁移方案">
+&lt;a href="#%e5%be%ae%e6%9c%8d%e5%8a%a1%e5%8f%8c%e6%a0%88%e8%bf%81%e7%a7%bb%e6%96%b9%e6%a1%88">#&lt;/a>
+微服务双栈迁移方案
+&lt;/h3>&lt;p>上文介绍的方案更多的是一般化的方法论。但具体到微服务系统中，远程调用过程如何实现多协议栈共存以便帮助企业用户平滑进行协议栈的迁移呢？
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679207793618-9c431106-93a2-452f-be71-32185f826569.png#clientId=u0b49bd32-d731-4&amp;amp;from=paste&amp;amp;height=386&amp;amp;id=F7Hec&amp;amp;name=image.png&amp;amp;originHeight=772&amp;amp;originWidth=1464&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=71775&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=u05d69bc5-9d7e-4646-987b-e869da537ba&amp;amp;title=&amp;amp;width=732"
+loading="lazy"
+alt="image.png"
+>
+上图是当前业界微服务系统中服务之间普遍采用的远程调用过程架构图，本文接下来介绍如何基于双栈技术实现微服务应用的协议栈平滑迁移的常用方式。&lt;/p>
+&lt;h3 id="双注册双订阅实现协议栈平滑迁移">
+&lt;a href="#%e5%8f%8c%e6%b3%a8%e5%86%8c%e5%8f%8c%e8%ae%a2%e9%98%85%e5%ae%9e%e7%8e%b0%e5%8d%8f%e8%ae%ae%e6%a0%88%e5%b9%b3%e6%bb%91%e8%bf%81%e7%a7%bb">#&lt;/a>
+双注册双订阅实现协议栈平滑迁移
+&lt;/h3>&lt;p>在微服务系统中，相比于单栈环境下，只有一个 IP 地址，微服务的注册与发现过程都基于该地址完成服务远程调用。在多协议栈共存的环境中，其本质就是要解决服务注册和发现过程怎么使用 IP 地址的问题。
+梳理清楚了问题，就不难发现基于双注册双订阅的方法可以较好地解决微服务系统中多协议栈共存的问题，以便实现微服务系统协议栈的平滑迁移。该方案的服务注册和订阅过程可以被描述为下图所示：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679216863247-e13d938b-a2a5-4965-b417-0d323d1c11fd.png#clientId=u21221381-1afe-4&amp;amp;from=paste&amp;amp;height=534&amp;amp;id=R9qXH&amp;amp;name=image.png&amp;amp;originHeight=1068&amp;amp;originWidth=1352&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=115412&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=u4adc2aaa-4fcc-4830-aca5-beccded9a22&amp;amp;title=&amp;amp;width=676"
+loading="lazy"
+alt="image.png"
+>&lt;/p>
+&lt;p>采用双注册双订阅实现微服务系统平滑进行 IP 协议栈迁移的过程可以被大致描述为以下步骤：&lt;/p>
+&lt;ol>
+&lt;li>在新的应用升级或者发版之前，对相关微服务应用所在宿主机进行 IP 地址协议栈升级改造，让其同时支持 IPv4 和 IPv6 双协议栈。&lt;/li>
+&lt;li>经过步骤 1 改造的微服务应用，在微服务框架层面，通过一个双栈地址提取模块提取应用宿主机中有效的 IPv4 和 IPv6 地址，并通过服务注册模块，将双栈地址都注册到注册中心。&lt;/li>
+&lt;li>消费者订阅注册中心中的某个服务的 IPv4 和 IPv6 双栈地址，通过应用服务框架层面的双栈地址解析模块，比对宿主机所支持的协议栈类型，如果宿主机仅支持 IPv4 协议，则使用提供者的 IPv4 地址发起服务调用；如果仅支持 IPv6 或同时支持双栈，则用提供者的 IPv6 地址发起服务调用；&lt;/li>
+&lt;li>当系统中的所有微服务都完成支持 IPv6 协议栈的支持后，逐步对所有应用宿主机关闭 IPv4 协议栈，从而平滑完成大规模微服务系统从 IPv4 协议栈到 IPv6 协议栈的迁移。&lt;/li>
+&lt;/ol>
+&lt;h3 id="基于-dns-技术实现协议栈平滑迁移">
+&lt;a href="#%e5%9f%ba%e4%ba%8e-dns-%e6%8a%80%e6%9c%af%e5%ae%9e%e7%8e%b0%e5%8d%8f%e8%ae%ae%e6%a0%88%e5%b9%b3%e6%bb%91%e8%bf%81%e7%a7%bb">#&lt;/a>
+基于 DNS 技术实现协议栈平滑迁移
+&lt;/h3>&lt;p>双注册双订阅的方法虽然很自然和清晰，但是其由于服务注册过程中针对双栈环境中的应用会多注册一条 IP 地址对应的记录，会降低注册中心的服务承载量。
+因此，也可以基于 DNS 技术实现多协议栈共存，解决微服务系统协议栈迁移的方法。其本质是将原来的注册服务实例地址过程变成注册服务实例域名（这里域名更多是实例标识作用），可实现在注册中心所注册服务实例记录数量不变的情况下，通过额外的 DNS 域名系统存储服务域名所对应的双栈 IP 地址，从而实现多协议栈的共存。采用该方案的服务注册和订阅过程如下图所示：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679217073664-4fc6c45d-b58c-4ae7-b446-ba0c3ff60400.png#clientId=u21221381-1afe-4&amp;amp;from=paste&amp;amp;height=462&amp;amp;id=u23c7c9fd&amp;amp;name=image.png&amp;amp;originHeight=924&amp;amp;originWidth=1600&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=141458&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=ud6e287ba-8c6f-404a-975b-53976811967&amp;amp;title=&amp;amp;width=800"
+loading="lazy"
+alt="image.png"
+>
+基于 DNS 技术实现微服务系统平滑进行 IP 地址迁移的过程可以被大致描述为以下步骤：&lt;/p>
+&lt;ol>
+&lt;li>在新的应用升级或者发版之前，对相关微服务应用进行 IP 地址协议栈改造，让其同时支持 IPv4 和 IPv6 双协议栈。改造后的应用需要将本机的双栈 IP 地址信息和本应用实例特点的域名注册到系统的 DNS 服务上。&lt;/li>
+&lt;li>完成域名注册后，应用实例将本地域名注册到注册中心。&lt;/li>
+&lt;li>消费者订阅注册中心中的某个服务所有实例的域名，通过应用框架层面的域名解析模块，向系统中的 DNS 服务发起基于域名解析请求，在通过 DNS 获取到示例域名对应的 IP 地址后，比对宿主机所支持的协议栈类型，如果宿主机仅支持 IPv4，则使用 IPv4 地址发起服务调用；如果仅支持 IPv6 或同时支持双栈，则优先使用 IPv6 地址发起服务调用；&lt;/li>
+&lt;li>当系统中的所有微服务都完成支持 IPv6 协议栈的支持后，逐步对所有应用宿主机关闭 IPv4 协议栈，从而平滑完成大规模微服务系统从 IPv4 协议栈到 IPv6 协议栈的迁移。&lt;/li>
+&lt;/ol>
+&lt;p>相比于双注册双订阅方式，基于 DNS 的方法可以较好地解决双注册双订阅过程中带给注册中心的多余压力，但 DNS 的高可用也是企业用户需要特别注意的点。&lt;/p>
+&lt;h2 id="实践">
+&lt;a href="#%e5%ae%9e%e8%b7%b5">#&lt;/a>
+实践
+&lt;/h2>&lt;p>Spring Cloud Alibaba 作为应用广泛的微服务框架，目前在 2021.0.5.0 版本中已经提供了微服务场景下的不同协议栈应用互通共存方案，以便帮助企业用户实现大规模微服务系统的协议栈迁移能力。社区方案基于双注册双订阅实现，应用启动后会默认将微服务的 IPv4 地址和 IPv6 地址注册到注册中心中，其中 IPv4 地址会存放在 Nacos 服务列表中的 IP 字段下，IPv6 地址在 Nacos 的 metadata 字段中，其对应的 Key 为 IPv6（可以解决普通双注册双订阅过程中的同一个服务实例有两条记录，对注册中心造成压力的问题）。当服务消费者调用服务提供者时，会根据自身的 IP 协议栈支持情况，选择合适的 IP 地址类型发起服务调用。具体规则：&lt;/p>
+&lt;ol>
+&lt;li>服务消费者本身支持 IPv4 和 IPv6 双协议栈或仅支持 IPv6 协议栈的情况下，服务消费者会使用服务提供的 IPv6 地址发起服务调用；&lt;/li>
+&lt;li>服务消费者本身仅支持 IPv4 单协议栈的情况下，服务消费者会使用服务提供的 IPv4 地址发起服务调用。&lt;/li>
+&lt;/ol>
+&lt;h3 id="应用配置">
+&lt;a href="#%e5%ba%94%e7%94%a8%e9%85%8d%e7%bd%ae">#&lt;/a>
+应用配置
+&lt;/h3>&lt;p>相比于一般使用 Spring Cloud Alibaba 构建微服务，要使用协议栈共存迁移功能需要对应用增加如下配置：&lt;/p>
+&lt;h4 id="服务注册">
+&lt;a href="#%e6%9c%8d%e5%8a%a1%e6%b3%a8%e5%86%8c">#&lt;/a>
+服务注册
+&lt;/h4>&lt;p>目前，使用支持协议栈共存迁移功能的 Spring Cloud Alibaba 版本以后，服务提供者在进行服务注册过中，不需要做任何配置，会默认检查当前应用所支持的协议栈情况，如果默认是单 IPv6 或 IPv4 协议栈，则仅注册相应的地址。如果应用支持双栈，则会自动获取应用的 IPv6 地址，然后，将 IPv6 地址作为应用实例的服务示例元数据注册到注册中心上。&lt;/p>
+&lt;h4 id="服务消费">
+&lt;a href="#%e6%9c%8d%e5%8a%a1%e6%b6%88%e8%b4%b9">#&lt;/a>
+服务消费
+&lt;/h4>&lt;p>如果应用是采用 Spring Cloud Alibaba 2021.0.5.0 版本，默认使用 Spring Cloud LoadBalancer 负载均衡策略，需要在消费者应用 application.properties 配置文件中增加如下配置开启协议栈共存迁移功能：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-properties" data-lang="properties">&lt;span class="line">&lt;span class="cl">&lt;span class="na">spring.cloud.loadbalancer.ribbon.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">false&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">spring.cloud.loadbalancer.nacos.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="效果演示">
+&lt;a href="#%e6%95%88%e6%9e%9c%e6%bc%94%e7%a4%ba">#&lt;/a>
+效果演示
+&lt;/h2>&lt;p>为了便于演示，本文直接基于&lt;a class="link" href="https://www.aliyun.com/product/kubernetes" target="_blank" rel="noopener"
+>阿里云容器服务 ACK&lt;/a>构建了一个双栈环境，来进行双栈环境的服务注册与消费演示。&lt;/p>
+&lt;h2 id="服务注册-1">
+&lt;a href="#%e6%9c%8d%e5%8a%a1%e6%b3%a8%e5%86%8c-1">#&lt;/a>
+服务注册
+&lt;/h2>&lt;p>如下本文演示用的服务提供者实例 Pod 信息：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679227819209-cb1b2ad6-4402-4075-aced-065f76160da4.png#clientId=uf73c13f1-991a-4&amp;amp;from=paste&amp;amp;height=156&amp;amp;id=u81a5cd10&amp;amp;name=image.png&amp;amp;originHeight=312&amp;amp;originWidth=2446&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=204807&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=uefd0add8-a6af-4436-807e-6606dc783fd&amp;amp;title=&amp;amp;width=1223"
+loading="lazy"
+alt="image.png"
+>
+基于 Spring Cloud Alibaba 协议栈共存迁移功能，其在注册中心上的服务实例列表信息：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679227850292-4c9d3cae-9a3a-4464-b863-17d4390bbb17.png#clientId=uf73c13f1-991a-4&amp;amp;from=paste&amp;amp;height=126&amp;amp;id=u78988947&amp;amp;name=image.png&amp;amp;originHeight=252&amp;amp;originWidth=2554&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=143946&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=u05f1052d-335b-4533-a72e-66a703f4b3d&amp;amp;title=&amp;amp;width=1277"
+loading="lazy"
+alt="image.png"
+>&lt;/p>
+&lt;h2 id="服务消费-1">
+&lt;a href="#%e6%9c%8d%e5%8a%a1%e6%b6%88%e8%b4%b9-1">#&lt;/a>
+服务消费
+&lt;/h2>&lt;p>单栈环境服务消费者：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679280217276-9e3cd3dc-b181-49a9-b6cf-c156e6720112.png#clientId=uf73c13f1-991a-4&amp;amp;from=paste&amp;amp;height=154&amp;amp;id=u326c0cf1&amp;amp;name=image.png&amp;amp;originHeight=308&amp;amp;originWidth=2462&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=181070&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=uddf23c9b-d437-4022-8d3b-9b3edf72c14&amp;amp;title=&amp;amp;width=1231"
+loading="lazy"
+alt="image.png"
+>
+服务调用成功以后，服务提供者会打印调用消费者的调用 IP 地址：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679280312813-4cb6d6e3-8a65-4be4-8660-b8af1cbecc23.png#clientId=uf73c13f1-991a-4&amp;amp;from=paste&amp;amp;height=181&amp;amp;id=u77731e53&amp;amp;name=image.png&amp;amp;originHeight=362&amp;amp;originWidth=2248&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=185950&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=u1b6c29bc-8997-4926-affd-f4a5f252ff3&amp;amp;title=&amp;amp;width=1124"
+loading="lazy"
+alt="image.png"
+>
+从上述返回结果来看，IPv4 单栈环境中的消费者由于仅支持单栈，所以一直通过 IPv4 协议栈向双栈服务提供者发起请求。
+双栈环境服务消费者：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679280399202-87209390-cddf-4f48-b53c-d035f67312c9.png#clientId=uf73c13f1-991a-4&amp;amp;from=paste&amp;amp;height=153&amp;amp;id=u7b1bfd9e&amp;amp;name=image.png&amp;amp;originHeight=306&amp;amp;originWidth=2436&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=192353&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=u4f98585e-d87d-466b-b7de-0c6d25df563&amp;amp;title=&amp;amp;width=1218"
+loading="lazy"
+alt="image.png"
+>
+服务调用成功以后，服务提供者会打印调用消费者的调用 IP 地址，可以看到打印的是消费者的 IPv6 地址：
+&lt;img src="https://intranetproxy.alipay.com/skylark/lark/0/2023/png/21257183/1679280496522-771aa27f-3c61-4c27-b2ba-931bfa3702d0.png#clientId=uf73c13f1-991a-4&amp;amp;from=paste&amp;amp;height=155&amp;amp;id=u808935b7&amp;amp;name=image.png&amp;amp;originHeight=310&amp;amp;originWidth=2252&amp;amp;originalType=binary&amp;amp;ratio=2&amp;amp;rotation=0&amp;amp;showTitle=false&amp;amp;size=202478&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=u68cd3a36-1de8-4598-b73d-c027faf51f8&amp;amp;title=&amp;amp;width=1126"
+loading="lazy"
+alt="image.png"
+>
+从上述返回结果来看，IPv4/IPv6 双栈环境中的消费者由于支持 IPv6，为了实现协议栈向 IPv6 的迁移，所以默认一直通过 IPv6 协议栈向双栈服务提供者发起请求。&lt;/p></description></item></channel></rss>

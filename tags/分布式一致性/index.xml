@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>分布式一致性 on 哈皮的自言自语</title><link>https://xiuwei.github.io/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/</link><description>Recent content in 分布式一致性 on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Mon, 25 Mar 2024 21:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/index.xml" rel="self" type="application/rss+xml"/><item><title>探秘 分布式一致性（共识）算法 ：Raft</title><link>https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/</link><pubDate>Mon, 25 Mar 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/</guid><description>&lt;img src="https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/cover.jpg" alt="Featured image of post 探秘 分布式一致性（共识）算法 ：Raft" />&lt;h2 id="前言">
+&lt;a href="#%e5%89%8d%e8%a8%80">#&lt;/a>
+前言
+&lt;/h2>&lt;p>Raft 算法是 Multi-Paxos 算法的一种，是一种强一致性算法。核心就是通过日志复制的方式达到整个集群的副本一致。&lt;/p>
+&lt;p>Raft 算法的三个核心概念就是 Leader 的选举、日志复制、节点变更。本文也将从这三个方面进行探讨。之后再聊聊 Raft 算法的几个应用场景。&lt;/p>
+&lt;h2 id="原理">
+&lt;a href="#%e5%8e%9f%e7%90%86">#&lt;/a>
+原理
+&lt;/h2>&lt;p>下面，我们就看看 Raft 算法的一些细节和流程。&lt;/p>
+&lt;h3 id="leader-选举">
+&lt;a href="#leader-%e9%80%89%e4%b8%be">#&lt;/a>
+Leader 选举
+&lt;/h3>&lt;p>Raft 算法中实现一致性的方法很简单：一切听领导的。分布式的环境下节点众多，达成一致最简单粗暴的方法不就是听一个节点的么。&lt;/p>
+&lt;h4 id="角色变换">
+&lt;a href="#%e8%a7%92%e8%89%b2%e5%8f%98%e6%8d%a2">#&lt;/a>
+角色变换
+&lt;/h4>&lt;p>Raft 算法中的每个节点都在三种角色之间变换着（一个时间点中一个节点只有一种角色）：Leader（领导者）、Candidate（候选者）、Follower（追随者）。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>领导者&lt;/strong>，整个集群的核心，其他的节点都追随这个领导者来复制日志内容。领导者主要负责客户端的写请求的处理、发送心跳（告诉其他节点我还活着，没有异常，请不要随便发起选举）、整理日志。&lt;/li>
+&lt;li>&lt;strong>候选者&lt;/strong>，当领导者节点出现异常（比如长时间没有收到领导者的心跳消息），这时候集群中的其他节点就会把自己的节点角色转为候选者，然后拉选票。最终根据选票数量决定是否成为领导者。&lt;/li>
+&lt;li>&lt;strong>追随者&lt;/strong>，领导者的小迷弟，永远追随着领导者（也有可能变成候选者或者领导者），主要负责从领导者那里复制日志。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/image.png"
+width="900"
+height="310"
+srcset="https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/image_hu2d375501564175190ec33b8bcacaa6c7_19912_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/image_hu2d375501564175190ec33b8bcacaa6c7_19912_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="角色示意图"
+class="gallery-image"
+data-flex-grow="290"
+data-flex-basis="696px"
+>&lt;/p>
+&lt;p>在了解选举过程之前，先介绍几个概念：任期编号、随机超时时间&lt;/p>
+&lt;h4 id="任期编号">
+&lt;a href="#%e4%bb%bb%e6%9c%9f%e7%bc%96%e5%8f%b7">#&lt;/a>
+任期编号
+&lt;/h4>&lt;p>所谓的任期编号就是一个数字而已，每个领导者在任期期间都有一个编号，所有的追随者都以这个编号为准。这个任期在整个选举的过程中起到了至关重要的作用：&lt;/p>
+&lt;ul>
+&lt;li>当某个节点长时间没收到领导者的消息，会把自己的任期+1，并且变成候选者&lt;/li>
+&lt;li>如果某个节点发现自己的任期编号比其他节点的小，那么会将自己的任期编号提高到编号大的那个值&lt;/li>
+&lt;li>如果某个节点发现自己的任期编号比其他节点的大，会丢弃这条消息&lt;/li>
+&lt;/ul>
+&lt;h4 id="随机超时时间">
+&lt;a href="#%e9%9a%8f%e6%9c%ba%e8%b6%85%e6%97%b6%e6%97%b6%e9%97%b4">#&lt;/a>
+随机超时时间
+&lt;/h4>&lt;p>追随者有个特点：当长时间收不到领导者的消息就变成候选者然后去拉选票。那么这个长时间指的是多长时间？Raft 算法里的这个长时间是随机的一个时间，每个节点都不同且随机。&lt;/p>
+&lt;p>为什么超时时间是随机的呢？如果每个节点超时时间相同，那么有可能同时发起选票，那就有可能选不出最终的领导者，导致算法无法进行。&lt;/p>
+&lt;h4 id="选举过程">
+&lt;a href="#%e9%80%89%e4%b8%be%e8%bf%87%e7%a8%8b">#&lt;/a>
+选举过程
+&lt;/h4>&lt;p>现在描述下 Raft 算法里的选举过程，假设集群里有三个节点：A、B、C&lt;/p>
+&lt;ul>
+&lt;li>首先，起始状态下，集群中所有的节点都是追随者，但是 A 节点的超时时间（与领导者断联系的时间）短，所以A节点先别人一步，把自己变成候选者&lt;/li>
+&lt;li>A 成为候选者后，把任期编号+1，然后投自己一票。接着再发消息给B、C 用来拉选票&lt;/li>
+&lt;li>B、C 收到来自 A 的拉选票的消息后，检查下自己在 A 的任期编号下是否投票过、检查下这个任期编号是否合适，如果都满足条件，就把票投给- A，然后把自己的任期编号更新为 A 发过来的任期编号。&lt;/li>
+&lt;li>当 A 收到来自节点其他大多数节点的选票后，A 就会成为领导者。处理客户端的写请求、发心跳消息给追随者（防止追随者选举成为领导者）&lt;/li>
+&lt;/ul>
+&lt;p>选举的过程有几点注意：&lt;/p>
+&lt;ul>
+&lt;li>一个任期内，除非这个领导者自己出现网络延迟等异常，否则会一直领导下去&lt;/li>
+&lt;li>如果追随者收到多个节点的拉选票的消息，采取先到先得的方式&lt;/li>
+&lt;/ul>
+&lt;blockquote>
+&lt;p>除了以上的精简过程描述，raft 社区还提供了完整共识过程的可视化展示，这里可以通过&lt;a class="link" href="http://thesecretlivesofdata.com/raft/" target="_blank" rel="noopener"
+>原理动画&lt;/a>展示选举过程。 &lt;a class="link" href="http://thesecretlivesofdata.com/raft/" target="_blank" rel="noopener"
+>http://thesecretlivesofdata.com/raft/&lt;/a>&lt;/p>
+&lt;/blockquote>
+&lt;h3 id="日志复制">
+&lt;a href="#%e6%97%a5%e5%bf%97%e5%a4%8d%e5%88%b6">#&lt;/a>
+日志复制
+&lt;/h3>&lt;p>Raft 算法选举出领导者之后就能对外提供服务了。领导者接受客户端的写请求，然后记录日志、把日志更新给其他节点，最终整个集群达成一致。&lt;/p>
+&lt;p>这里的日志跟 MySQL 底层的那些个实现事物的各种 log 在原理和作用上是类似的。Raft 的日志是由日志项组成，每个日志项包含了一些指令信息、任期编号、索引值等内容。领导者的日志项式最全的（当然啦，因为所有人都听领导者的嘛）且索引值是按照一定的顺序排起来的，这样方便让其他节点查漏补缺。&lt;/p>
+&lt;h4 id="日志复制过程">
+&lt;a href="#%e6%97%a5%e5%bf%97%e5%a4%8d%e5%88%b6%e8%bf%87%e7%a8%8b">#&lt;/a>
+日志复制过程
+&lt;/h4>&lt;p>那来自客户端的写请求是怎么个处理流程呢？大体如下：&lt;/p>
+&lt;ul>
+&lt;li>第一步，领导者先处理写请求，创建新的日志项，写到领导者的本地日志中&lt;/li>
+&lt;li>第二步，领导者发送这条日志项给其他节点&lt;/li>
+&lt;li>第三步，当领导者收到大多数节点的回复（比如，其他节点说我已经收到新的日志项了），领导者将自己的状态机（可以理解为最终达成一致的那个状态数据库）更新一下，更新成把新的日志项加入后的最新状态。&lt;/li>
+&lt;li>第四步，领导者返还给客户端：你的写请求已经成功被我方执行，请放心。&lt;/li>
+&lt;li>第五步，领导者发在后续的心跳中告诉其他节点：你们可以更新自己的状态机为我现在的状态机的状态了。&lt;/li>
+&lt;/ul>
+&lt;p>非常类似两阶段提交方式的分布式事务……只不过做了点优化&lt;/p>
+&lt;h4 id="一致性的保障">
+&lt;a href="#%e4%b8%80%e8%87%b4%e6%80%a7%e7%9a%84%e4%bf%9d%e9%9a%9c">#&lt;/a>
+一致性的保障
+&lt;/h4>&lt;p>上面的流程是正常的情况，如果发生非正常的情况，Raft 怎么保证其一致性？其实也挺简单粗暴：强制让追随者的日志项都与领导者一致，并且领导者的日志项永远不会被覆盖或者删除。具体怎么强制让追随者与领导者一致的呢？也很简单：发消息。&lt;/p>
+&lt;ul>
+&lt;li>领导者有了最新的日志项，不是要发消息给追随者吗？这条消息里包含了领导者的前一条日志项的一些信息。&lt;/li>
+&lt;li>追随者收到消息后，检查下这条消息中的前一条日志项的信息是否与自己最新的日志项一致，如果一致，就追加这条最新的日志项到末尾。如果发现不一致，发送失败的消息给领导者。&lt;/li>
+&lt;li>领导者收到来自追随者失败的消息后，将前一条日志项打包成消息，这条消息包含了前前条日志项的信息。&lt;/li>
+&lt;li>追随者再次检查消息，跟第二步的检查机制一样，循环往复，直到找到与领导者相同的那条日志项为止。&lt;/li>
+&lt;/ul>
+&lt;p>总结下就是：领导者不停的通过消息与追随者确认两者之间最后一次一致的日志项在哪里，找到这条相同的日志项后，追随者直接强制把与领导者不同的日志项覆盖成领导者的日志项。当然，如果追随者落后的较多，这么一步步的往回走是很低效的，这种情况下领导者可以阶段性发送 snapshots，一次性把落后的节点的日志迅速的追回到某个 snapshots。&lt;/p>
+&lt;h3 id="节点变更">
+&lt;a href="#%e8%8a%82%e7%82%b9%e5%8f%98%e6%9b%b4">#&lt;/a>
+节点变更
+&lt;/h3>&lt;p>这里我们继续探讨 Raft 算法中如何保持节点变更后领导者的一致性。领导者网络异常等可以从其他追随者重新选举来保持集群稳定。那如果集群中加入一个或者多个节点后，是否会导致集群不一致呢？如果操作不当，是会的。&lt;/p>
+&lt;p>想象这种情况，A、B、C三个节点，A 是领导者，B、C 是追随者，但是 C 是日志项的异常节点。如果这时候突然加了两台机器：D、E，好巧不巧的是 C、D、E 成为了一个新的小集群，然后 C 成为了领导，那就麻烦了。&lt;/p>
+&lt;p>如何解决上述的麻烦？也很简单粗暴：加机器的时候一台一台的加就行了。同样的，如果缩减机器也是一台一台的减少。&lt;/p>
+&lt;h2 id="关于-raft-的思考">
+&lt;a href="#%e5%85%b3%e4%ba%8e-raft-%e7%9a%84%e6%80%9d%e8%80%83">#&lt;/a>
+关于 Raft 的思考
+&lt;/h2>&lt;p>任何算法、技术都在解决问题的同时带来了其他的问题。Raft 也一样，这里笔者总结下其弊端。&lt;/p>
+&lt;ul>
+&lt;li>Raft 算法依赖于一个领导者（Leader）节点来协调集群中的其他节点。这意味着领导者节点可能会成为一个性能瓶颈，特别是在处理大量读写请求的情况下。为了解决这个问题，可以采用一些优化策略，如领导者复制和负载均衡。&lt;/li>
+&lt;li>Raft 算法依赖于集群中大多数节点的响应来达成一致。当集群规模增加时，需要更多的节点来达成一致，这可能导致更高的通信成本和更长的延迟。因此，Raft 算法在大规模分布式系统中的扩展性可能受到限制。&lt;/li>
+&lt;li>在某些情况下，Raft 算法可能需要几个网络往返才能达到一致性。这会导致一定程度的一致性延迟。对于对实时性要求较高的应用，这种延迟可能会成为一个问题。&lt;/li>
+&lt;/ul>
+&lt;h2 id="参考文献">
+&lt;a href="#%e5%8f%82%e8%80%83%e6%96%87%e7%8c%ae">#&lt;/a>
+参考文献
+&lt;/h2>&lt;p>&lt;a class="link" href="https://raft.github.io/raft.pdf" target="_blank" rel="noopener"
+>In Search of an Understandable Consensus Algorithm&lt;/a>
+&lt;a class="link" href="https://www.scylladb.com/glossary/raft-consensus-algorithm/" target="_blank" rel="noopener"
+>Raft Consensus Algorithm Definition&lt;/a>&lt;/p></description></item><item><title>探秘 Gossip 协议：从节点交流到信息扩散</title><link>https://xiuwei.github.io/p/exploring-the-gossip-protocol/</link><pubDate>Fri, 15 Mar 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/exploring-the-gossip-protocol/</guid><description>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/cover.jpg" alt="Featured image of post 探秘 Gossip 协议：从节点交流到信息扩散" />&lt;h2 id="引言">
+&lt;a href="#%e5%bc%95%e8%a8%80">#&lt;/a>
+引言
+&lt;/h2>&lt;p>在分布式系统中，节点之间的信息传播是至关重要的。Gossip 协议作为一种简单而有效的分布式信息传播协议，被广泛应用于各种分布式系统中。本文将带领读者从零开始，通过具体的场景和例子，深入探讨 Gossip 协议的工作原理和应用场景。&lt;/p>
+&lt;h3 id="基本概念">
+&lt;a href="#%e5%9f%ba%e6%9c%ac%e6%a6%82%e5%bf%b5">#&lt;/a>
+基本概念
+&lt;/h3>&lt;p>Gossip，单词本身就是流言、八卦的意思。正如名字一样，Gossip 协议也被称为“流言协议”。它是一种分布式算法，用于在节点之间传递信息。在 Gossip 协议中，每个节点都可以将信息广播给它所知道的其他节点，这些节点又将该信息广播给它们所知道的其他节点，以此类推，直到整个网络都知道了这个信息。这种广播方式可以保证整个网络中的所有节点都能够及时地了解到最新的信息，并确保整个网络的一致性。&lt;/p>
+&lt;h3 id="背景与意义">
+&lt;a href="#%e8%83%8c%e6%99%af%e4%b8%8e%e6%84%8f%e4%b9%89">#&lt;/a>
+背景与意义
+&lt;/h3>&lt;p>关于这个协议的详细论文可查看参考文献一。Gossip 协议通常用于分布式系统中，例如 P2P 网络、分布式数据库、分布式文件系统等。在比特币网络中，也使用了 Gossip 协议来广播新的交易和块。Cassandra 使用的数据复制协议也是 Gossip 算法。还有 Akka、Redis Cluster 都有用到。&lt;/p>
+&lt;p>这个算法的最终目的还是一个：达到集群中所有节点的数据一致。只不过这是最终一致性。&lt;/p>
+&lt;h2 id="gossip-协议的基本原理">
+&lt;a href="#gossip-%e5%8d%8f%e8%ae%ae%e7%9a%84%e5%9f%ba%e6%9c%ac%e5%8e%9f%e7%90%86">#&lt;/a>
+Gossip 协议的基本原理
+&lt;/h2>&lt;p>这个协议看似简单，实则很复杂。一个一传十、十传百的工作方式真正在分布式的环境下应用起来不是那么容易的。下面我们探讨下其实现细节。&lt;/p>
+&lt;p>理解这个协议可以从三个维度：通信方式、协调机制、传播过程。&lt;/p>
+&lt;h3 id="通信方式">
+&lt;a href="#%e9%80%9a%e4%bf%a1%e6%96%b9%e5%bc%8f">#&lt;/a>
+通信方式
+&lt;/h3>&lt;p>这里所谓的通信方式就是集群中的节点如何建立通信。协议里支持三种：pull、push、push-pull。&lt;/p>
+&lt;h4 id="push-模式">
+&lt;a href="#push-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+push 模式
+&lt;/h4>&lt;p>节点 A 将数据 (key,value,version) 及对应的版本号推送给 B 节点，B 节点更新A中比自己新的数据&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1.png"
+width="762"
+height="150"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1_hu80bdea9f2e17428598a82c2794d3271a_80914_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1_hu80bdea9f2e17428598a82c2794d3271a_80914_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="508"
+data-flex-basis="1219px"
+>&lt;/p>
+&lt;p>在推模式中，当一个节点（源节点）需要传播信息时，它会在每个 Gossip 周期（把两个节点数据同步一次定义算作是一个周期）主动将自己的本地数据发送给随机选择的目标节点。目标节点收到信息后，将根据接收到的数据更新自己的本地数据存储。&lt;/p>
+&lt;p>推模式的优势在于，信息能够迅速传播到其他节点。但是，它也可能导致节点之间的通信开销较大，因为每个节点在每个周期内都会主动发送信息，即使目标节点可能已经拥有了这些信息。&lt;/p>
+&lt;h4 id="pull-模式">
+&lt;a href="#pull-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+pull 模式
+&lt;/h4>&lt;p>节点 A 仅将数据 key, version 推送给 B ，注意没有value哦， A 推送给 B 时，B 将本地比 A 新的数据（Key, value, version）推送给 A，A 更新本地，这一步相当于A在主动拉取 B 的值。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2.png"
+width="1121"
+height="364"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2_hu5b5e2d1aa69610bbea27985c83334705_157433_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2_hu5b5e2d1aa69610bbea27985c83334705_157433_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="307"
+data-flex-basis="739px"
+>&lt;/p>
+&lt;p>在拉模式中，节点不会主动发送信息。相反，它们会在每个 Gossip 周期主动向随机选择的目标节点请求数据。目标节点收到请求后，将自己的本地数据发送给请求节点。请求节点收到数据后，将根据接收到的数据更新自己的本地数据存储。&lt;/p>
+&lt;p>拉模式的优势在于，通信开销相对较小，因为节点只在需要时才会请求数据。然而，拉模式可能导致信息传播速度较慢，尤其是在节点数量较多的情况下。&lt;/p>
+&lt;h4 id="push-pull-模式">
+&lt;a href="#push-pull-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+push-pull 模式
+&lt;/h4>&lt;p>与 Pull 类似，只是多了一步，A 再将本地比B新的数据推送给 B，B 再更新本地。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3.png"
+width="727"
+height="240"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3_hubef17dfc6ca53ea1343e17d70fc95962_102397_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3_hubef17dfc6ca53ea1343e17d70fc95962_102397_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="302"
+data-flex-basis="727px"
+>&lt;/p>
+&lt;p>推拉模式结合了推模式和拉模式的优势，既能保证信息的快速传播，又能减小通信开销。在推拉模式中，当一个节点（源节点）需要传播信息时，它会在每个Gossip周期主动将自己的本地数据发送给随机选择的目标节点（推），同时也向目标节点请求数据（拉）。目标节点收到信息后，将根据接收到的数据更新自己的本地数据存储，并将自己的数据发送回源节点。&lt;/p>
+&lt;p>推拉模式的优势在于，它可以在保证信息传播速度的同时，降低通信开销。这种模式在大规模分布式系统中尤为突出。&lt;/p>
+&lt;h3 id="传播策略">
+&lt;a href="#%e4%bc%a0%e6%92%ad%e7%ad%96%e7%95%a5">#&lt;/a>
+传播策略
+&lt;/h3>&lt;p>了解完通信方式，再来聊聊传播策略，也就是所谓的如何实现最终的一致性。主要有两种：Anti-Entropy(反熵传播)和Rumor-Mongering(谣言传播)。&lt;/p>
+&lt;h4 id="anti-entropy反熵传播">
+&lt;a href="#anti-entropy%e5%8f%8d%e7%86%b5%e4%bc%a0%e6%92%ad">#&lt;/a>
+Anti-Entropy(反熵传播)
+&lt;/h4>&lt;p>Anti-Entropy 策略通过在节点之间交换数据的摘要来实现信息传播。在每个Gossip 周期内，节点会向随机选择的目标节点发送其本地数据的摘要。目标节点收到摘要后，会比较自己的本地数据和收到的摘要，找出不一致之处。然后，目标节点会向源节点请求缺失或过时的数据。通过这种方式，节点之间的数据最终将达到一致。Anti-Entropy 策略在通信开销和传播速度之间实现了一种平衡，适用于大规模分布式系统。&lt;/p>
+&lt;p>这种方式工作量大，一般用于新节点加入时同步更新数据的时候用得到。&lt;/p>
+&lt;ul>
+&lt;li>适用场景：执行反熵时，相关的节点都是已知的，而且节点数量不能太多，如果是一个动态变化或节点数比较多的分布式环境（比如在 DevOps 环境中检测节点故障，并动态维护集群节点状态），这时反熵就不适用了。&lt;/li>
+&lt;li>缺点：消息数量非常庞大，且无限制；通常只用于新加入节点的数据初始化。可以通过引入校验和（Checksum）等机制，降低需要对比的数据量和通讯消息等。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4.png"
+width="1098"
+height="382"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4_hu7d2b9098776a99c46c1d076f40d1026c_197930_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4_hu7d2b9098776a99c46c1d076f40d1026c_197930_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="Anti-Entropy(反熵传播)"
+class="gallery-image"
+data-flex-grow="287"
+data-flex-basis="689px"
+>&lt;/p>
+&lt;h4 id="rumor-mongering谣言传播">
+&lt;a href="#rumor-mongering%e8%b0%a3%e8%a8%80%e4%bc%a0%e6%92%ad">#&lt;/a>
+Rumor-Mongering(谣言传播)
+&lt;/h4>&lt;p>Rumor Mongering策略又称为传闻传播策略，它是一种概率论驱动的信息传播方法。在这种策略中，每个节点会在每个Gossip周期内随机选择一个或多个目标节点，并将信息发送给这些目标节点。当目标节点收到信息后，它们也会继续随机选择其他节点并将信息传播出去。这个过程会持续进行，直到信息在整个系统中被广泛传播。Rumor Mongering策略的优点是具有较低的通信开销和较高的可扩展性，但传播速度可能较慢。&lt;/p>
+&lt;p>这种方式工作量小，一般用于节点间数据增量的同步。&lt;/p>
+&lt;ul>
+&lt;li>适用场景：适合动态变化的分布式系统。&lt;/li>
+&lt;li>缺点：系统有一定的概率会不一致，通常用于节点间数据增量同步。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5.png"
+width="1098"
+height="703"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5_hu31ff4c4a99d3e5ad093a6f2ec21f663c_136383_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5_hu31ff4c4a99d3e5ad093a6f2ec21f663c_136383_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="Rumor-Mongering(谣言传播)"
+class="gallery-image"
+data-flex-grow="156"
+data-flex-basis="374px"
+>&lt;/p>
+&lt;h3 id="工作过程">
+&lt;a href="#%e5%b7%a5%e4%bd%9c%e8%bf%87%e7%a8%8b">#&lt;/a>
+工作过程
+&lt;/h3>&lt;p>Gossip 协议的工作流程可以简化描述为几个过程：&lt;/p>
+&lt;ul>
+&lt;li>种子节点在 Gossip 周期内散播消息&lt;/li>
+&lt;li>被感染节点随机选择N个邻接节点散播消息&lt;/li>
+&lt;li>每次散播消息都选择尚未发送过的节点进行散播&lt;/li>
+&lt;/ul>
+&lt;p>这个协议是建立在一定概率的情况下进行的，因为并不是所有节点都时时的能拿到数据，所以这个协议是一种最终一致性算法。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image.png"
+width="640"
+height="413"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image_hu5615acc8d4e95475c63c0632749b833a_190720_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image_hu5615acc8d4e95475c63c0632749b833a_190720_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="协议简易动画，来源于网络（详见参考文献二）"
+class="gallery-image"
+data-flex-grow="154"
+data-flex-basis="371px"
+>&lt;/p>
+&lt;h2 id="协议的应用于实践">
+&lt;a href="#%e5%8d%8f%e8%ae%ae%e7%9a%84%e5%ba%94%e7%94%a8%e4%ba%8e%e5%ae%9e%e8%b7%b5">#&lt;/a>
+协议的应用于实践
+&lt;/h2>&lt;h3 id="apache-cassandra">
+&lt;a href="#apache-cassandra">#&lt;/a>
+Apache Cassandra
+&lt;/h3>&lt;p>Apache Cassandra是一种高度可扩展的、分布式的NoSQL数据库，它在很大程度上受到了Amazon Dynamo的启发。Cassandra中使用Gossip协议来实现节点间的成员关系管理、故障检测、元数据信息传播以及负载均衡。&lt;/p>
+&lt;h4 id="成员关系管理和故障检测">
+&lt;a href="#%e6%88%90%e5%91%98%e5%85%b3%e7%b3%bb%e7%ae%a1%e7%90%86%e5%92%8c%e6%95%85%e9%9a%9c%e6%a3%80%e6%b5%8b">#&lt;/a>
+成员关系管理和故障检测
+&lt;/h4>&lt;p>在Cassandra中，节点通过Gossip协议来维护成员关系信息。在每个Gossip周期，节点会与随机选择的其他节点交换成员关系信息。这样，节点可以了解其他节点的在线状态和故障情况。此外，Cassandra使用了一种名为Phi Accrual Failure Detector的故障检测机制，它依赖于Gossip协议收集的节点信息来检测节点的可用性。&lt;/p>
+&lt;h4 id="元数据信息传播">
+&lt;a href="#%e5%85%83%e6%95%b0%e6%8d%ae%e4%bf%a1%e6%81%af%e4%bc%a0%e6%92%ad">#&lt;/a>
+元数据信息传播
+&lt;/h4>&lt;p>Cassandra中的节点需要维护一定量的元数据，例如分区信息、副本信息和令牌（Token）分配。Gossip协议被用于在节点之间传播这些元数据。在每个Gossip周期内，节点会将自己的元数据发送给随机选择的其他节点。这些节点在收到元数据后，会更新自己的本地数据存储，并将更新后的元数据传播给其他节点。这个过程会持续进行，直到元数据在整个系统中被广泛传播。&lt;/p>
+&lt;h3 id="redis-cluster">
+&lt;a href="#redis-cluster">#&lt;/a>
+Redis Cluster
+&lt;/h3>&lt;p>Gossip 协议被广泛应用于各种分布式系统中，下面我们将介绍在Redis Cluster的应用场景，并将 Gossip 协议与真实场景结合起来。&lt;/p>
+&lt;p>Redis Cluster 是一个分布式的 Redis 解决方案，它允许将数据分布在多个节点上以提高性能和可用性。Gossip 协议用于节点之间的发现和状态同步，每个节点都了解整个集群的拓扑结构以及其他节点的状态信息，以便正确地路由请求和保证数据的一致性。&lt;/p>
+&lt;p>想象一下一个大型的工厂，里面有各种各样的生产线。每条生产线都有一个负责人，他们会定期与周围的生产线负责人交流，分享自己所在生产线的状态和工作情况。这样，即使有一部分生产线出现了问题，其他生产线也能够通过周围生产线的信息了解到整个工厂的状态。&lt;/p>
+&lt;p>Gossip 协议在 Redis Cluster 中的应用主要分为两个方面：&lt;/p>
+&lt;h4 id="节点发现">
+&lt;a href="#%e8%8a%82%e7%82%b9%e5%8f%91%e7%8e%b0">#&lt;/a>
+节点发现
+&lt;/h4>&lt;p>当一个新的节点加入到 Redis Cluster 中时，它需要能够自动地发现其他节点，并加入到集群中。这就需要一种机制来实现节点之间的自动发现，而 Gossip 协议恰好提供了这样的功能。每个节点会周期性地与其他节点交换信息，包括自己的地址和状态，从而使新加入的节点能够了解到整个集群的拓扑结构，并与其他节点建立连接。&lt;/p>
+&lt;h4 id="状态同步">
+&lt;a href="#%e7%8a%b6%e6%80%81%e5%90%8c%e6%ad%a5">#&lt;/a>
+状态同步
+&lt;/h4>&lt;p>在 Redis Cluster 中，节点之间需要保持数据的一致性，即使某个节点发生了故障或者新的节点加入。为了实现这一点，每个节点都需要了解其他节点的状态信息，如节点的存活状态、负载情况等。通过 Gossip 协议，每个节点可以定期地交换状态信息，从而保持集群中所有节点的状态同步，并及时地做出相应的调整和处理。&lt;/p>
+&lt;p>总的来说，Redis Cluster 中的 Gossip 协议通过节点之间的周期性交流信息，实现了节点的发现和状态同步，从而保证了集群的高可用性和一致性。&lt;/p>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93">#&lt;/a>
+总结
+&lt;/h2>&lt;p>文中介绍了 Gossip 协议的一些情况。这里简单总结下其优缺点：&lt;/p>
+&lt;h3 id="优势">
+&lt;a href="#%e4%bc%98%e5%8a%bf">#&lt;/a>
+优势
+&lt;/h3>&lt;ul>
+&lt;li>快速传播：由于Gossip协议基于随机节点选择进行信息交换，信息可以在很短的时间内传播到大部分节点，实现快速信息传播。&lt;/li>
+&lt;li>容错性：Gossip协议具有较高的容错性，即使某个节点发生故障或者无法与其他节点通信，信息仍然可以通过其他路径传播。&lt;/li>
+&lt;li>抗拥塞：随机选择目标节点有助于避免在特定节点上产生通信瓶颈。这使得Gossip协议可以在大规模分布式系统中高效运行。&lt;/li>
+&lt;li>可扩展性：Gossip协议的设计使得它可以很容易地适应大规模分布式系统，具有较好的可扩展性。&lt;/li>
+&lt;li>简单易实现：Gossip协议的设计和实现相对简单，易于在各种分布式系统中进行部署。&lt;/li>
+&lt;/ul>
+&lt;h3 id="劣势">
+&lt;a href="#%e5%8a%a3%e5%8a%bf">#&lt;/a>
+劣势
+&lt;/h3>&lt;ul>
+&lt;li>最终一致性：Gossip协议通常实现的是最终一致性，而不是强一致性。在某些应用场景中，这可能导致数据在短时间内不一致。&lt;/li>
+&lt;li>带宽消耗：由于Gossip协议的信息交换是基于概率的，可能会导致部分信息多次在节点之间传播，增加了网络带宽消耗。&lt;/li>
+&lt;li>信息冗余：Gossip协议可能会导致信息冗余，因为每个节点都需要存储关于其他节点的部分信息。&lt;/li>
+&lt;li>难以保证完全一致性：在某些情况下，由于网络延迟、故障等因素，Gossip协议可能难以保证系统中所有节点的完全一致性。&lt;/li>
+&lt;li>参数调优：Gossip协议的性能在很大程度上取决于参数设置，例如Gossip周期、目标节点数量等。在实际应用中，需要根据系统的特点和需求进行参数调优，以获得最佳性能。&lt;/li>
+&lt;/ul>
+&lt;h2 id="参考文献">
+&lt;a href="#%e5%8f%82%e8%80%83%e6%96%87%e7%8c%ae">#&lt;/a>
+参考文献
+&lt;/h2>&lt;p>&lt;a class="link" href="https://www.cs.cornell.edu/home/rvr/papers/flowgossip.pdf" target="_blank" rel="noopener"
+>Efficient Reconciliation and Flow Control for Anti-Entropy Protocols&lt;/a>
+&lt;a class="link" href="https://pstree.cc/wtf-is-gossip/" target="_blank" rel="noopener"
+>Wtf is Gossip Protocols?&lt;/a>
+&lt;a class="link" href="https://zhuanlan.zhihu.com/p/41228196" target="_blank" rel="noopener"
+>P2P 网络核心技术：Gossip 协议&lt;/a>&lt;/p></description></item></channel></rss>

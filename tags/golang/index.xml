@@ -1,0 +1,714 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Golang on 哈皮的自言自语</title><link>https://xiuwei.github.io/tags/golang/</link><description>Recent content in Golang on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Sun, 05 May 2024 19:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/tags/golang/index.xml" rel="self" type="application/rss+xml"/><item><title>REST 接口规范</title><link>https://xiuwei.github.io/p/rest-specification/</link><pubDate>Sun, 05 May 2024 19:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/rest-specification/</guid><description>&lt;img src="https://xiuwei.github.io/p/rest-specification/cover.jpg" alt="Featured image of post REST 接口规范" />&lt;h2 id="restful-api-介绍">
+&lt;a href="#restful-api-%e4%bb%8b%e7%bb%8d">#&lt;/a>
+RESTful API 介绍
+&lt;/h2>&lt;p>在回答“RESTful API 是什么”之前，我们先来看下 REST 是什么意思：REST 代表的是表现层状态转移（REpresentational State Transfer），由 Roy Fielding 在他的论文&lt;a class="link" href="https://www.ics.uci.edu/~fielding/pubs/dissertation/top.htm" target="_blank" rel="noopener"
+>《Architectural Styles and the Design of Network-based Software Architectures》&lt;/a>里提出。REST 本身并没有创造新的技术、组件或服务，它只是一种软件架构风格，是一组架构约束条件和原则，而不是技术框架。&lt;/p>
+&lt;p>REST 有一系列规范，满足这些规范的 API 均可称为 RESTful API。REST 规范把所有内容都视为资源，也就是说网络上一切皆资源。REST 架构对资源的操作包括获取、创建、修改和删除，这些操作正好对应 HTTP 协议提供的 &lt;code>GET&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>PUT&lt;/code> 和 &lt;code>DELETE&lt;/code> 方法。&lt;/p>
+&lt;p>REST 风格虽然适用于很多传输协议，但在实际开发中，由于 REST 天生和 HTTP 协议相辅相成，因此 HTTP 协议已经成了实现 RESTful API 事实上的标准。所以，REST 具有以下核心特点：&lt;/p>
+&lt;ul>
+&lt;li>以资源（resource）为中心，所有的东西都抽象成资源，所有的行为都应该是在资源上的 CRUD 操作。
+&lt;ul>
+&lt;li>资源对应着面向对象范式里的对象，面向对象范式以对象为中心。&lt;/li>
+&lt;li>资源使用 URI 标识，每个资源实例都有一个唯一的 URI 标识。例如，如果我们有一个用户，用户名是 &lt;code>admin&lt;/code>，那么它的 URI 标识就可以是 &lt;code>/users/admin&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>资源是有状态的，使用 JSON/XML 等在 HTTP Body 里表征资源的状态。&lt;/li>
+&lt;li>客户端通过四个 HTTP 动词，对服务器端资源进行操作，实现“表现层状态转化”。&lt;/li>
+&lt;li>无状态，这里的无状态是指每个 RESTful API 请求都包含了所有足够完成本次操作的信息，服务器端无须保持 session。无状态对于服务端的弹性扩容是很重要的。&lt;/li>
+&lt;/ul>
+&lt;blockquote>
+&lt;p>提示：因为怕你弄混概念，这里强调下 REST 和 RESTful API 的区别：REST 是一种规范，而 RESTful API 则是满足这种规范的 API 接口。&lt;/p>
+&lt;/blockquote>
+&lt;h2 id="restful-api-设计原则">
+&lt;a href="#restful-api-%e8%ae%be%e8%ae%a1%e5%8e%9f%e5%88%99">#&lt;/a>
+RESTful API 设计原则
+&lt;/h2>&lt;p>上面我们说了，RESTful API 就是满足 REST 规范的 API，由此看来，RESTful API 的核心是规范，那么具体有哪些规范呢？&lt;/p>
+&lt;p>接下来从 URI 设计、API 版本管理等七个方面，详细介绍 RESTful API 的设计原则。&lt;/p>
+&lt;h3 id="uri-设计">
+&lt;a href="#uri-%e8%ae%be%e8%ae%a1">#&lt;/a>
+URI 设计
+&lt;/h3>&lt;p>资源都是使用 URI 标识的，我们应该按照一定的规范来设计 URI，通过规范化可以使我们的 API 接口更加易读、易用。以下是 URI 设计时，应该遵循的一些规范：&lt;/p>
+&lt;ul>
+&lt;li>资源名使用名词而不是动词，并且用名词复数表示。资源分为 Collection 和 Member 两种。
+&lt;ul>
+&lt;li>Collection：一堆资源的集合。例如我们系统里有很多用户（User），这些用户的集合就是 Collection。Collection 的 URI 标识应该是 域名/资源名复数， 例如 &lt;code>example.com/v1/users&lt;/code>。&lt;/li>
+&lt;li>Member：单个特定资源。例如系统中特定名字的用户，就是 Collection 里的一个 Member。Member 的 URI 标识应该是 域名/资源名复数/资源名称， 例如 &lt;code>example.com/v1/users/colin&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>URI 结尾不应包含 &lt;code>/&lt;/code> 。&lt;/li>
+&lt;li>URI 中不能出现下划线 &lt;code>_&lt;/code>，必须用中杠线 &lt;code>-&lt;/code> 代替（有些人推荐用 &lt;code>_&lt;/code>，有些人推荐用 &lt;code>-&lt;/code>，统一使用一种格式即可，我比较推荐用 &lt;code>-&lt;/code>）。&lt;/li>
+&lt;li>URI 路径用小写，不要用大写。&lt;/li>
+&lt;li>避免层级过深的 URI。超过 2 层的资源嵌套会很乱，建议将其他资源转化为 &lt;code>?&lt;/code> 参数，比如：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-text" data-lang="text">&lt;span class="line">&lt;span class="cl">/schools/qinghua/classes/rooma/students/colin # 不推荐
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">/students?school=qinghua&amp;amp;class=rooma # 推荐
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>这里有个地方需要注意：在实际的 API 开发中，可能你会发现有些操作不能很好地映射为一个 REST 资源，这时候，你可以参考下面的做法。&lt;/p>
+&lt;ul>
+&lt;li>将一个操作变成资源的一个属性，比如想在系统中暂时禁用某个用户，可以这么设计 URI：&lt;code>/users/colin?active=false&lt;/code>。&lt;/li>
+&lt;li>将操作当作是一个资源的嵌套资源，比如一个 GitHub 的加星操作：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-text" data-lang="text">&lt;span class="line">&lt;span class="cl">PUT /gists/:id/star # github star action
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">DELETE /gists/:id/star # github unstar action
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>如果以上都不能解决问题，有时可以打破这类规范。比如登录操作，登录不属于任何一个资源，URI 可以设计为：&lt;code>/v1/login&lt;/code>。&lt;/p>
+&lt;p>在设计 URI 时，如果你遇到一些不确定的地方，推荐你参考 &lt;a class="link" href="https://developer.github.com/v3/" target="_blank" rel="noopener"
+>GitHub 标准 RESTful API&lt;/a>。&lt;/p>
+&lt;h3 id="rest-资源操作映射为-http-方法">
+&lt;a href="#rest-%e8%b5%84%e6%ba%90%e6%93%8d%e4%bd%9c%e6%98%a0%e5%b0%84%e4%b8%ba-http-%e6%96%b9%e6%b3%95">#&lt;/a>
+REST 资源操作映射为 HTTP 方法
+&lt;/h3>&lt;p>基本上 RESTful API 都是使用 HTTP 协议原生的 &lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>DELETE&lt;/code> 来标识对资源的 CRUD 操作，形成的规范如下表所示：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>Collection 资源（&lt;strong>/v1/users&lt;/strong>）&lt;/th>
+&lt;th>Ember 资源（&lt;strong>/v1/users/:username&lt;/strong>）&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>获取一个 Collection 下所有的 Member 信息&lt;/td>
+&lt;td>获取一个 Member 的状态表征&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>在 Collection 中新建一个 Member&lt;/td>
+&lt;td>没有这类操作&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>用另外一个 Collection 替换这个 Collection&lt;/td>
+&lt;td>更新一个 Member 的状态表征&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELETE&lt;/td>
+&lt;td>删除整个 Collection，可以用来批量删除资源&lt;/td>
+&lt;td>删除这个 Member&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>提示：Collection 代表资源集合，Ember 代表特定的资源。&lt;/p>
+&lt;p>下面是一个具体的映射例子：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>行为&lt;/th>
+&lt;th>URI&lt;/th>
+&lt;th>示例说明&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>获取资源列表&lt;/td>
+&lt;td>&lt;code>/users&lt;/code>&lt;/td>
+&lt;td>获取用户列表&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>获取一个具体的资源表述&lt;/td>
+&lt;td>&lt;code>/users/colin&lt;/code>&lt;/td>
+&lt;td>获取&lt;code>colin&lt;/code>用户的详细信息&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>创建一个新的资源&lt;/td>
+&lt;td>&lt;code>/users&lt;/code>&lt;/td>
+&lt;td>创建一个新的用户&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>更新一个资源&lt;/td>
+&lt;td>&lt;code>/users/colin&lt;/code>&lt;/td>
+&lt;td>更新用户名为&lt;code>colin&lt;/code>的用户&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELET&lt;/td>
+&lt;td>删除服务器上的一个资源&lt;/td>
+&lt;td>&lt;code>/users/colin&lt;/code>&lt;/td>
+&lt;td>删除用户名为&lt;code>colin&lt;/code>的用户&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>&lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>DELETE&lt;/code> 是 RESTful API 最常用的 HTTP 请求方法。HTTP 还提供了另外 3 种请求方法，这些方法不经常使用，这里也列举出来供你参考：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>Collection 资源（/v1/users）&lt;/th>
+&lt;th>Ember 资源（/v1/users/:username）&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>PATCH&lt;/td>
+&lt;td>整个 Collection 进行部分更新，通常用于更新 Collection 的某些属性或字段&lt;/td>
+&lt;td>获取一个 Member 的元信息&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>HEAD&lt;/td>
+&lt;td>获取一个 Collection 的元信息，但不需要获取实际资源的内容&lt;/td>
+&lt;td>获取 Member 的元信息，但不需要获取实际资源的内容&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>OPTIONS&lt;/td>
+&lt;td>获取整个 Collection 支持的通信选项，比如支持的 HTTP 方法、请求头等信息&lt;/td>
+&lt;td>获取 Member 支持的通信选项，包括支持的 HTTP 方法、请求头等信息&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;blockquote>
+&lt;p>提示：OPTIONS 请求方法通常用于跨域请求时的预检请求。&lt;/p>
+&lt;/blockquote>
+&lt;p>对资源的操作应该满足安全性和幂等性：&lt;/p>
+&lt;ul>
+&lt;li>安全性：不会改变资源状态，可以理解为只读的。&lt;/li>
+&lt;li>幂等性：执行 1 次和执行 N 次，对资源状态改变的效果是等价的。&lt;/li>
+&lt;/ul>
+&lt;p>使用不同 HTTP 方法时，资源操作的安全性和幂等性对照见下表：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>HTTP 方法&lt;/th>
+&lt;th>是否安全&lt;/th>
+&lt;th>是否幂等&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>是&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>否&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELETE&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PATCH&lt;/td>
+&lt;td>否&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>HEAD&lt;/td>
+&lt;td>是&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>OPTIONS&lt;/td>
+&lt;td>是&lt;/td>
+&lt;td>是&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>在使用 HTTP 方法的时候，有以下两点需要你注意：&lt;/p>
+&lt;ul>
+&lt;li>GET 返回的结果，要尽量可用于 &lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code> 操作中。例如，用 GET 方法获得了一个 user 的信息，调用者修改 user 的邮件，然后将此结果再用 &lt;code>PUT&lt;/code> 方法更新。这要求 &lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code> 操作的资源属性类型是一样的。&lt;/li>
+&lt;li>如果对资源进行状态/属性变更，要用 &lt;code>PUT&lt;/code> 方法，&lt;code>POST&lt;/code> 方法仅用来创建或者批量删除这两种场景。&lt;/li>
+&lt;/ul>
+&lt;p>在设计 API 时，经常会有批量删除的需求，需要在请求中携带多个需要删除的资源名，但是 HTTP 的 &lt;code>DELETE&lt;/code> 方法不能携带多个资源名，这时候可以通过下面三种方式来解决：&lt;/p>
+&lt;ul>
+&lt;li>发起多个 DELETE 请求。&lt;/li>
+&lt;li>操作路径中带多个 id，id 之间用分隔符分隔， 例如：&lt;code>DELETE /v1/users?ids=1,2,3&lt;/code> 。&lt;/li>
+&lt;li>直接使用 POST 方式来批量删除，Body 中传入需要删除的资源列表。&lt;/li>
+&lt;/ul>
+&lt;p>其中，第二种是我最推荐的方式，因为使用了匹配的 &lt;code>DELETE&lt;/code> 动词，并且不需要发送多次 &lt;code>DELETE&lt;/code> 请求。这时候，你可能会问如果 id 列表太长，会不会有性能问题？其实不会的，因为在一个真实的项目中，我们每次允许删除的条目个数是有限的，每次最大删除的条目数，通常跟每个页面的最大展示条数保持一致。&lt;/p>
+&lt;p>你需要注意的是，这三种方式都有各自的使用场景，你可以根据需要自行选择。如果选择了某一种方式，那么整个项目都需要统一用这种方式。&lt;/p>
+&lt;h3 id="匹配-http-请求方法的参数">
+&lt;a href="#%e5%8c%b9%e9%85%8d-http-%e8%af%b7%e6%b1%82%e6%96%b9%e6%b3%95%e7%9a%84%e5%8f%82%e6%95%b0">#&lt;/a>
+匹配 HTTP 请求方法的参数
+&lt;/h3>&lt;p>HTTP 有很多请求方法，例如：&lt;code>GET&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>POST&lt;/code>、&lt;code>DELETE&lt;/code> 等。在执行 HTTP 请求时，根据请求方法的类型，其参数指定位置也是有规范。在执行请求时，HTTP 请求方法和请求参数不匹配的请求，客户端会报错或者拒绝请求。&lt;/p>
+&lt;p>HTTP 请求参数，可以视情况设置在以下位置：&lt;/p>
+&lt;ul>
+&lt;li>查询参数（Query Parameters）：查询参数是附加在 URL 路径后面的键值对，使用 &lt;code>?&lt;/code> 开头，多个参数之间使用 &lt;code>&amp;amp;&lt;/code> 分隔，例如：&lt;code>http://example.com/api/resource?param1=value1&amp;amp;param2=value2&lt;/code>。查询参数通常用于对资源进行过滤、分页、排序等操作；&lt;/li>
+&lt;li>路径参数（Path Parameters）：路径参数是出现在 URL 路径中的一部分，通常用花括号 &lt;code>{}&lt;/code> 包裹，例如：&lt;code>http://example.com/api/resource/{id}&lt;/code>。路径参数用于标识资源的唯一标识符或者其他需要在 URL 中直接体现的参数；&lt;/li>
+&lt;li>请求头（Request Headers）：请求头是包含在 HTTP 请求头部中的键值对，例如：&lt;code>Content-Type: application/json&lt;/code>。请求头用于传递请求的元数据、授权信息、内容类型等；&lt;/li>
+&lt;li>请求体（Request Body）：请求体是包含在 HTTP 请求中的主体部分，通常用于 &lt;code>POST&lt;/code>、&lt;code>PUT&lt;/code>、&lt;code>PATCH&lt;/code> 等方法中传递数据。请求体用于传递请求的具体数据，通常使用 JSON、XML 等格式；&lt;/li>
+&lt;li>Cookie：Cookie 是存储在客户端的一小段文本信息，会随着每次请求被发送到服务器。Cookie 用于在客户端和服务器之间保持状态，通常用于会话管理、用户认证等。&lt;/li>
+&lt;/ul>
+&lt;p>下表是不同 HTTP 请求方法所支持的请求参数的设置位置：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>请求方法&lt;/th>
+&lt;th>参数位置&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>GET&lt;/td>
+&lt;td>适配的请求参数位置：查询参数（Query Parameters）和路径参数（Path Parameters）；GET 请求通常通过查询参数传递参数，也可以通过路径参数传递需要标识的资源。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>POST&lt;/td>
+&lt;td>适配的请求参数位置：请求体（Request Body）；POST 请求通常通过请求体传递需要创建的资源的数据。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PUT&lt;/td>
+&lt;td>适配的请求参数位置：路径参数（Path Parameters）和请求体（Request Body）；PUT 请求通常通过路径参数指定要更新的资源，通过请求体传递更新后的数据。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>DELETE&lt;/td>
+&lt;td>适配的请求参数位置：路径参数（Path Parameters）；DELETE 请求通常通过路径参数指定要删除的资源。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>PATCH&lt;/td>
+&lt;td>适配的请求参数位置：路径参数（Path Parameters）和请求体（Request Body）；PATCH 请求通常通过路径参数指定要部分更新的资源，通过请求体传递更新的部分数据。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>HEAD&lt;/td>
+&lt;td>适配的请求参数位置：查询参数（Query Parameters）和路径参数（Path Parameters）；HEAD 请求通常通过查询参数和路径参数传递参数，用于获取资源的元信息而不获取资源本身。&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>OPTIONS&lt;/td>
+&lt;td>适配的请求参数位置：无特定参数位置要求；OPTIONS 请求通常用于获取目标资源所支持的通信选项，不需要特定的请求参数位置。&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="统一的返回格式">
+&lt;a href="#%e7%bb%9f%e4%b8%80%e7%9a%84%e8%bf%94%e5%9b%9e%e6%a0%bc%e5%bc%8f">#&lt;/a>
+统一的返回格式
+&lt;/h3>&lt;p>一般来说，一个系统的 RESTful API 会向外界开放多个资源的接口，每个接口的返回格式要保持一致。另外，每个接口都会返回成功和失败两种消息，这两种消息的格式也要保持一致。不然，客户端代码要适配不同接口的返回格式，每个返回格式又要适配成功和失败两种消息格式，会大大增加用户的学习和使用成本。返回的格式没有强制的标准，你可以根据实际的业务需要返回不同的格式。&lt;/p>
+&lt;h3 id="api-版本管理">
+&lt;a href="#api-%e7%89%88%e6%9c%ac%e7%ae%a1%e7%90%86">#&lt;/a>
+API 版本管理
+&lt;/h3>&lt;p>随着时间的推移、需求的变更，一个 API 往往满足不了现有的需求，这时候就需要对 API 进行修改。对 API 进行修改时，不能影响其他调用系统的正常使用，这就要求 API 变更做到向下兼容，也就是新老版本共存。&lt;/p>
+&lt;p>但在实际场景中，很可能会出现同一个 API 无法向下兼容的情况。这时候最好的解决办法是从一开始就引入 API 版本机制，当不能向下兼容时，就引入一个新的版本，老的版本则保留原样。这样既能保证服务的可用性和安全性，同时也能满足新需求。&lt;/p>
+&lt;p>API 版本有不同的标识方法，在 RESTful API 开发中，通常将版本标识放在如下 3 个位置：&lt;/p>
+&lt;ul>
+&lt;li>URL 中，比如 &lt;code>/v1/users&lt;/code>。&lt;/li>
+&lt;li>HTTP Header 中，比如 &lt;code>Accept: vnd.example-com.foo+json; version=1.0&lt;/code>。&lt;/li>
+&lt;li>Form 参数中，比如 &lt;code>/users?version=v1&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;p>通常建议将版本标识放在 URL 中的，比如 /v1/users，这样做的好处是很直观，GitHub、Kubernetes、Etcd 等很多优秀的 API 均采用这种方式。&lt;/p>
+&lt;p>这里要注意，有些开发人员不建议将版本放在 URL 中，因为他们觉得不同的版本可以理解成同一种资源的不同表现形式，所以应该采用同一个 URI。对于这一点，没有严格的标准，根据项目实际需要选择一种方式即可。&lt;/p>
+&lt;h3 id="api-命名">
+&lt;a href="#api-%e5%91%bd%e5%90%8d">#&lt;/a>
+API 命名
+&lt;/h3>&lt;p>API 通常的命名方式有三种，分别是驼峰命名法（serverAddress）、蛇形命名法（server_address）和脊柱命名法（server-address）。&lt;/p>
+&lt;p>驼峰命名法和蛇形命名法都需要切换输入法，会增加操作的复杂性，也容易出错，所以这里建议用脊柱命名法。GitHub API 用的就是脊柱命名法，例如 &lt;a class="link" href="https://docs.github.com/en/rest/reference/actions#get-allowed-actions-for-an-organization" target="_blank" rel="noopener"
+>selected-actions&lt;/a>。&lt;/p>
+&lt;h3 id="统一分页过滤排序搜索功能">
+&lt;a href="#%e7%bb%9f%e4%b8%80%e5%88%86%e9%a1%b5%e8%bf%87%e6%bb%a4%e6%8e%92%e5%ba%8f%e6%90%9c%e7%b4%a2%e5%8a%9f%e8%83%bd">#&lt;/a>
+统一分页/过滤/排序/搜索功能
+&lt;/h3>&lt;p>REST 资源的查询接口，通常情况下都需要实现分页、过滤、排序、搜索功能，因为这些功能是每个 REST 资源都能用到的，所以可以实现为一个公共的 API 组件。下面来介绍下这些功能。&lt;/p>
+&lt;ul>
+&lt;li>分页：在列出一个 Collection 下所有的 Member 时，应该提供分页功能，例如 &lt;code>/users?offset=0&amp;amp;limit=20&lt;/code>（&lt;code>limit&lt;/code>，指定返回记录的数量；offset，指定返回记录的开始位置）。引入分页功能可以减少 API 响应的延时，同时可以避免返回太多条目，导致服务器/客户端响应特别慢，甚至导致服务器/客户端 crash 的情况。&lt;/li>
+&lt;li>过滤：如果用户不需要一个资源的全部状态属性，可以在 URI 参数里指定返回哪些属性，例如 &lt;code>/users?fields=email,username,address&lt;/code>。&lt;/li>
+&lt;li>排序：用户很多时候会根据创建时间或者其他因素，列出一个 Collection 中前 100 个 Member，这时可以在 URI 参数中指明排序参数，例如 &lt;code>/users?sort=age,desc&lt;/code>。&lt;/li>
+&lt;li>搜索：当一个资源的 Member 太多时，用户可能想通过搜索，快速找到所需要的 Member，或着想搜下有没有名字为 &lt;code>xxx&lt;/code> 的某类资源，这时候就需要提供搜索功能。搜索建议按模糊匹配来搜索。&lt;/li>
+&lt;/ul>
+&lt;h3 id="域名">
+&lt;a href="#%e5%9f%9f%e5%90%8d">#&lt;/a>
+域名
+&lt;/h3>&lt;p>API 的域名设置主要有两种方式：&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>https://example.com/api&lt;/code>，这种方式适合 API 将来不会有进一步扩展的情况，比如刚开始 &lt;code>example.com&lt;/code> 域名下只有一套 API 系统，未来也只有这一套 API 系统。&lt;/li>
+&lt;li>&lt;code>https://xxx.api.example.com&lt;/code>，如果 &lt;code>example.com&lt;/code> 域名下未来会新增另一个系统 API，这时候最好的方式是每个系统的 API 拥有专有的 API 域名，比如：&lt;code>storage.api.example.com&lt;/code>，&lt;code>network.api.example.com&lt;/code>。腾讯云的域名就是采用这种方式。&lt;/li>
+&lt;/ul>
+&lt;p>到这里，我们就将 REST 设计原则中的核心原则讲完了，这里有个需要注意的点：不同公司、不同团队、不同项目可能采取不同的 REST 设计原则，以上所列的基本上都是大家公认的原则。&lt;/p>
+&lt;p>REST 设计原则中，还有一些原则因为内容比较多，并且可以独立成模块，所以放在后面来讲。比如 RESTful API 安全性、状态返回码、认证等。&lt;/p>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93">#&lt;/a>
+总结
+&lt;/h2>&lt;p>本文详细介绍了 RESTful API 及 RESTful API 设计原则。REST 是一种 API 规范，而 RESTful API 则是满足这种规范的 API 接口，RESTful API 的核心是规范。&lt;/p>
+&lt;p>在 REST 规范中，资源通过 URI 来标识，资源名使用名词而不是动词，并且用名词复数表示，资源都是分为 Collection 和 Member 两种。RESTful API 中，分别使用 &lt;code>POST&lt;/code> 、 &lt;code>DELETE&lt;/code> 、 &lt;code>PUT&lt;/code> 、 &lt;code>GET&lt;/code> 来表示 REST 资源的增删改查，HTTP 方法、Collection、Member 不同组合会产生不同的操作，具体的映射你可以看下 &lt;strong>REST 资源操作映射为 HTTP 方法&lt;/strong> 部分的表格。&lt;/p>
+&lt;p>为了方便用户使用和理解，每个 RESTful API 的返回格式、错误和正确消息的返回格式，都应该保持一致。RESTful API 需要支持 API 版本，并且版本应该能够向前兼容，我们可以将版本号放在 URL 中、HTTP Header 中、Form 参数中，但这里我建议将版本号放在 URL 中，例如 &lt;code>/v1/users&lt;/code>，这种形式比较直观。&lt;/p>
+&lt;p>另外，我们可以通过脊柱命名法来命名 API 接口名。对于一个 REST 资源，其查询接口还应该支持分页/过滤/排序/搜索功能，这些功能可以用同一套机制来实现。 API 的域名可以采用 &lt;code>https://example.com/api&lt;/code> 和 &lt;code>https://xxx.api.example.com&lt;/code> 两种格式。&lt;/p></description></item><item><title>日志规范</title><link>https://xiuwei.github.io/p/log-specification/</link><pubDate>Tue, 02 Apr 2024 19:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/log-specification/</guid><description>&lt;img src="https://xiuwei.github.io/p/log-specification/cover.jpg" alt="Featured image of post 日志规范" />&lt;h2 id="前言">
+&lt;a href="#%e5%89%8d%e8%a8%80">#&lt;/a>
+前言
+&lt;/h2>&lt;p>如果在阅读日志时，你遇到以下问题，说明你的日志打印需要规范起来：&lt;/p>
+&lt;ul>
+&lt;li>过多或冗余的日志，干扰排障：有时候，系统可能会记录过多的日志信息，包括一些无关紧要的或冗余的信息。这会导致日志文件过大，不易于查找和分析关键的日志记录；&lt;/li>
+&lt;li>&lt;strong>缺乏一致性和标准化：&lt;/strong> 在多个模块或组件中，日志格式和结构可能不一致，导致日志的解析和分析困难。缺乏统一的标准化规范，使得日志的可读性和可维护性下降；&lt;/li>
+&lt;li>缺乏上下文信息：打印日志时，只把原始的错误打印出来，没有补充打印上下文信息，例如：请求参数、关键变量值等，导致排障困难，需要重新复现；&lt;/li>
+&lt;li>同一个错误层层打印：例如在 Go 简洁架构中，同一个错误日志分别在 Use Case 层和 Service 层分别打印，导致在排障时带来冗余日志干扰，还会导致程序性能下降、浪费存储空间等；&lt;/li>
+&lt;li>根因丢失，无法快速定位故障点：有时候，错误日志在向上传递过程中，如果做了包装，要附带一些信息，最原始的报错日志可能就会丢失，导致很难定位出错误根因。&lt;/li>
+&lt;/ul>
+&lt;p>日志规范是为了提高日志的可读性、可维护性和可搜索性而制定的一系列规则和约定。将日志打印规范化，可以带来以下好处：&lt;/p>
+&lt;ul>
+&lt;li>可读性：日志规范可以定义日志的格式、结构和语义，使日志信息更易于理解和解读。统一的日志格式可以让开发人员、运维人员和其他团队成员更容易阅读和理解日志，从而更快地定位和解决问题；&lt;/li>
+&lt;li>可维护性：日志规范可以定义日志的级别、分类和命名规则，使日志更易于管理和维护。通过规范化的日志级别和分类，可以更好地组织和过滤日志，只关注关键的日志信息，减少冗余和无用的日志记录；&lt;/li>
+&lt;li>可搜索性：日志规范可以定义日志的关键字、标签和结构，使日志更易于搜索和过滤。通过定义一致的日志结构和关键字，可以使用日志分析工具或搜索引擎来快速搜索和过滤日志，以便查找特定的事件、错误或异常；&lt;/li>
+&lt;li>故障排查：日志规范可以帮助定位和排查故障。规范的日志格式和结构可以提供更多的上下文信息，包括时间戳、请求参数、异常堆栈等，有助于分析和理解故障现象，加快故障排查的速度和准确性；&lt;/li>
+&lt;li>性能优化：日志规范可以帮助识别和优化性能问题。通过规范化的日志记录和度量指标，可以更好地监控和分析系统的性能表现，发现潜在的性能瓶颈和优化机会。&lt;/li>
+&lt;/ul>
+&lt;p>可以看到，日志规范是提高日志质量和效用的重要工具。通过制定和遵守日志规范，可以提升团队协作效率，加快故障排查和问题解决的速度，提高系统的可靠性和性能。&lt;/p>
+&lt;p>本文就来介绍下日志记录需要遵循的规范。这些日志规范分为以下 2 类：&lt;/p>
+&lt;ul>
+&lt;li>必须遵循的：这类规范是所有组件记录日志时都要遵循的规范；&lt;/li>
+&lt;li>建议遵循的：这些规范是根据需要选择性需要遵循的规范。&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志打印规范">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%89%93%e5%8d%b0%e8%a7%84%e8%8c%83">#&lt;/a>
+日志打印规范
+&lt;/h2>&lt;h3 id="强制必须遵循的规范">
+&lt;a href="#%e5%bc%ba%e5%88%b6%e5%bf%85%e9%a1%bb%e9%81%b5%e5%be%aa%e7%9a%84%e8%a7%84%e8%8c%83">#&lt;/a>
+【强制】必须遵循的规范]
+&lt;/h3>&lt;ul>
+&lt;li>所有日志均使用英文进行记录；&lt;/li>
+&lt;li>记录日志时，要明确日志级别，选择正确的日志级别；&lt;/li>
+&lt;li>打印结构化的日志，不要拼接字符串， 采用 KV 模式；&lt;/li>
+&lt;li>日志均以大写开头，结尾不跟 .（可以接受问号和感叹号，但不推荐），例如：log.Errorw(err, &amp;ldquo;Failed to create lru cache&amp;rdquo;)；&lt;/li>
+&lt;li>使用过去时，例如：Could not delete B 而不是 Cannot delete B；&lt;/li>
+&lt;li>日志信息应使用主语进行记录，当有执行主体时使用完整句子 （A could not do B），如果主体是程序本身则省略主语（Could not do B）；&lt;/li>
+&lt;li>日志要脱敏，禁止输出敏感的信息，例如：密码、密钥、手机号、IP 等信息；&lt;/li>
+&lt;li>为了方便阅读日志，日志禁止换行；&lt;/li>
+&lt;li>日志中不要记录无用信息，防止无用日志淹没重要信息；&lt;/li>
+&lt;li>日志信息要准确全面，努力做到仅凭日志就可以定位问题；&lt;/li>
+&lt;li>Error 日志必须记录完整的上下文信息，例如：完整输入和输出、关键变量的值等；&lt;/li>
+&lt;li>使用 Warn 级别记录用户输入参数错误导致的程序错误。因为我们 Error 和 Warn 级别的日志告警策略不同，在 Warn 级别打印，可以避免频繁告警；&lt;/li>
+&lt;li>确保日志打印语句不 Panic，例如：klog.V(4).Infof(&amp;ldquo;Connection error: %s %s: %v&amp;rdquo;, t.Op, t.URL, t.Err)，如果 t 是 nil 就会导致日志调用时发生 panic，会大大加大排障难度；&lt;/li>
+&lt;li>日志信息禁用字符串拼接，而要使用占位符。使用占位符，格式更清晰，性能更优。例如：klog.V(4).Infof(&amp;ldquo;Get login token: %s&amp;rdquo;, rp.Token)；&lt;/li>
+&lt;li>所有 Operator、Controller、Kube APIServer Style 的组件为了跟 K8S 生态保持兼容，统一使用 &lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 包。所有非 Operator、Controller、Kube APIServer Style 的组件统一使用 &lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 包；&lt;/li>
+&lt;li>当时用 &lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 记录日志时，需要遵循以下规范：
+&lt;ul>
+&lt;li>要使用结构化的日志记录方式：klog.InfoS， klog.ErrorS。Example: klog.InfoS(&amp;ldquo;Received HTTP request&amp;rdquo;, &amp;ldquo;method&amp;rdquo;, &amp;ldquo;GET&amp;rdquo;, &amp;ldquo;URL&amp;rdquo;, &amp;ldquo;/metrics&amp;rdquo;, &amp;ldquo;latency&amp;rdquo;, time.Second);&lt;/li>
+&lt;li>日志级别：
+&lt;ul>
+&lt;li>Error 级别日志使用：klog.ErrorS；&lt;/li>
+&lt;li>Warning 级别日志使用：klog.V(1).InfoS；&lt;/li>
+&lt;li>Info 级别日志使用：klog.V(2).InfoS；&lt;/li>
+&lt;li>Debug 级别日志使用：klog.V(4).InfoS；&lt;/li>
+&lt;li>Trace 级别日志使用：klog.V(5).InfoS。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>日志键值对，值规范如下：
+&lt;ul>
+&lt;li>优先使用klog.KObj 或 klog.KObjSlice来记录 Kubernetes 对象；
+&lt;ul>
+&lt;li>当日志记录对象不是一个标准的 Kubernetes 资源对象时，使用klog.KRef；&lt;/li>
+&lt;li>当日志记录对象是单个 Kubernetes 资源对象时（例如：*v1.Pod），使用klog.KObj；&lt;/li>
+&lt;li>当日志记录对象是 Kubernetes 资源对象数组时（例如[]*v1.Pod），使用klog.KObjSlice。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>优先传递结构化的对象，而非object.String()；&lt;/li>
+&lt;li>当期望将[]byte类型的对象作为string类型记录时，需要明确使用string(&lt;byte array>)进行转换；&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>如果使用 &lt;a class="link" href="http://github.com/superproj/onex/pkg/log%E6%97%A5%E5%BF%97%E5%8C%85%EF%BC%9A" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/log日志包：open in new window&lt;/a>
+&lt;ul>
+&lt;li>要使用结构化的日志记录方式：log.C(ctx).Errorw()、log.C(ctx).Infow()等；&lt;/li>
+&lt;li>如果日志能获取到 context.Context 变量，需要使用 log.C() 函数打印，例如：log.C(ctx).Warnw(&amp;ldquo;please enable redis, otherwise the idempotent is invalid&amp;rdquo;)。使用 log.C(ctx) 可以输出必要的 KV，例如：&lt;a class="link" href="http://trace.id/" target="_blank" rel="noopener"
+>trace.idopen in new window&lt;/a>、&lt;a class="link" href="http://user.id/" target="_blank" rel="noopener"
+>user.idopen in new window&lt;/a> 等。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>不要使用 Fatal 级别的日志，因为 Fatal 级别的日志会调用 os.Exit(255) 导致日志退出。如果确实需要退出，请先打印 Error 级别的日志，在调用 os.Exit(255) 显示退出程序；&lt;/li>
+&lt;li>不要使用 Panic 级别的日志，这会导致程序 Panic，造成服务不稳定。如果程序需要 Panic，可以通过返回 error，并处理改 error 来达到相同的目的；&lt;/li>
+&lt;li>线上日志至少要保留 15 天，因为异常日志具有以 周 为频次发生的特点，保留 15 天，可以帮助你在排障时，有日志可以查询；&lt;/li>
+&lt;li>在 Debug、排障过程中，持续不断优化日志输出，定期对代码日志进行 review。如果定位问题时间过长则说明日志需要优化。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;strong>提示：&lt;/strong>&lt;/p>
+&lt;ul>
+&lt;li>任何日志事件都可以简单归为错误日志和非错误日志，所以在使用klog记录日志时，只使用了klog.ErrorS 和klog.InfoS；&lt;/li>
+&lt;li>在日志消息中，关于开头字母大小写的惯例因开发团队而异。一些团队更喜欢使用大写字母开头，这有助于强调重要性，以及使日志更易读，尤其是在较长的日志行中。而其他团队更倾向于使用小写字母，因为这样的日志看起来更加紧凑和一致；&lt;/li>
+&lt;li>无用日志常见情况：
+&lt;ul>
+&lt;li>能够放在一条日志中的东西放在多条日志中输出；&lt;/li>
+&lt;li>预期会发生且能够正常处理的异常，打印一堆无用的堆栈；&lt;/li>
+&lt;li>为了开发调试方便而加入的“临时”日志；&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>日志过少的情况有：
+&lt;ul>
+&lt;li>请求出错时不能通过日志直接定位问题，需要添加临时日志并重新请求才能定位问题；&lt;/li>
+&lt;li>无法确定服务中的后台任务是否按照期望执行；&lt;/li>
+&lt;li>无法确定服务的内存数据结构的状态；&lt;/li>
+&lt;li>无法确定服务的异常处理逻辑（如重试）是否正常执行；&lt;/li>
+&lt;li>无法确定服务启动时配置是否正确加载。&lt;/li>
+&lt;li>&amp;hellip;&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="建议建议遵循的规范">
+&lt;a href="#%e5%bb%ba%e8%ae%ae%e5%bb%ba%e8%ae%ae%e9%81%b5%e5%be%aa%e7%9a%84%e8%a7%84%e8%8c%83">#&lt;/a>
+【建议】建议遵循的规范
+&lt;/h3>&lt;ul>
+&lt;li>请遵循日志打印基本原则：日志信息要简明扼要、易理解、易搜索，并包含排障所需的上下文
+&lt;ul>
+&lt;li>失败日志建议格式为 Failed to &amp;lt;动词&amp;gt; + &amp;lt;一些事&amp;gt;，例如：log.Errorw(err, &amp;ldquo;Failed to initialize casbin adapter&amp;rdquo;)；&lt;/li>
+&lt;li>成功日志建议格式为 &amp;lt;动词&amp;gt; + &amp;lt;一些事&amp;gt;，例如：log.Infow(&amp;ldquo;Initialize idempotent success&amp;rdquo;)。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>共享库，例如：&lt;a class="link" href="http://github.com/superproj/onex/pkg/db" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/dbopen in new window&lt;/a> 只返回错误，不记录日志。因为共享库可能会用在命令行工具、其他项目中，如果记录日志，势必会造成命令行工具有日志输出，影响使用体验、共享库的日志输出跟其他项目的日志输出格式不一致等问题；&lt;/li>
+&lt;li>日志包名字统一为 &lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 或 &lt;a class="link" href="http://k8s.io/klog/v2%EF%BC%8C%E5%A6%82%E6%9E%9C%E5%90%8C%E4%B8%80%E4%B8%AA%E6%96%87%E4%BB%B6%E4%B8%AD%E6%9C%89%E5%85%B6%E4%BB%96%E5%90%8C%E5%90%8D%E7%9A%84%E6%97%A5%E5%BF%97%E5%8C%85%EF%BC%8C%E9%9C%80%E8%A6%81%E5%B0%86%E5%85%B6%E4%BB%96%E6%97%A5%E5%BF%97%E5%8C%85%E9%87%8D%E5%91%BD%E5%90%8D%EF%BC%8C%E8%80%8C%E4%B8%94%E9%87%8D%E5%91%BD%E5%90%8D%E7%9A%84%E5%90%8D%E5%AD%97%E8%A6%81%E5%9C%A8" target="_blank" rel="noopener"
+>k8s.io/klog/v2，如果同一个文件中有其他同名的日志包，需要将其他日志包重命名，而且重命名的名字要在open in new window&lt;/a>中保持一致，例如：kratoslog &amp;ldquo;&lt;a class="link" href="http://github.com/go-kratos/kratos/v2/log" target="_blank" rel="noopener"
+>github.com/go-kratos/kratos/v2/logopen in new window&lt;/a>&amp;quot;；&lt;/li>
+&lt;li>Error 日志应该在最原始的报错位置打印，一是避免上层代码缺失部分入参，二是避免漏打；&lt;/li>
+&lt;li>服务初始化时，成功信息和失败信息都需要打印，影响启动的错误需要 panic，并打印 FATAL 日志；&lt;/li>
+&lt;li>打印参数类型已知的情况下，建议按照对应类型格式化方式打印参数；不确定类型可采用 %v；结构体打印可使用 %+v，可将变量名和变量值都打印出来，但需要注意结构体包含指针类型变量，那打印的只是地址信息，因此需要单独打印。&lt;/li>
+&lt;/ul>
+&lt;h2 id="选择合适的日志级别">
+&lt;a href="#%e9%80%89%e6%8b%a9%e5%90%88%e9%80%82%e7%9a%84%e6%97%a5%e5%bf%97%e7%ba%a7%e5%88%ab">#&lt;/a>
+选择合适的日志级别
+&lt;/h2>&lt;p>不同级别的日志，具有不同的意义，能实现不同的功能，在开发中，我们应该根据目的，在合适的级别记录日志，这里我同样给你一些建议。具体如下表所示：&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>日志级别&lt;/th>
+&lt;th>描述&lt;/th>
+&lt;th>告警级别&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>Debug&lt;/td>
+&lt;td>为了获取足够的信息进行 Debug，通常会在 Debug 级别打印很多日志。例如，可以打印整个 HTTP 请求的请求 Body 或者响应 Body。&lt;br>Debug 级别需要打印大量的日志，这会严重拖累程序的性能。并且，Debug 级别的日志，主要是为了能在开发测试阶段更好地 Debug，多是一些不影响现网业务的日志信息。&lt;br>所以，对于 Debug 级别的日志，在服务上线时我们一定要禁止掉。否则，就可能会因为大量的日志导致硬盘空间快速用完，从而造成服务宕机，也可能会影响服务的性能和产品体验。&lt;br>Debug 这个级别的日志可以随意输出，任何你觉得有助于开发、测试阶段调试的日志，都可以在这个级别打印。&lt;/td>
+&lt;td>无&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Info&lt;/td>
+&lt;td>Info 级别的日志可以记录一些有用的信息，供以后的运营分析，所以 Info 级别的日志不是越多越好，也不是越少越好，应以满足需求为主要目标。一些关键日志，可以在 Info 级别记录，但如果日志量大、输出频度过高，则要考虑在 Debug 级别记录。&lt;br>现网的日志级别一般是 Info 级别，为了不使日志文件占满整个磁盘空间，在记录日志时，要注意避免产生过多的 Info 级别的日志。例如，在 for 循环中，就要慎用 Info 级别的日志。&lt;/td>
+&lt;td>无&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Warn&lt;/td>
+&lt;td>一些警告类的日志可以记录在 Warn 级别，Warn 级别的日志表示遇到了预期之内的错误，并且已经进行了处理，不会影响主要功能。像这些日志，就需要你关注起来。Warn 更多的是业务级别的警告日志。&lt;/td>
+&lt;td>Lark&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Error&lt;/td>
+&lt;td>Error 级别的日志告诉我们程序执行出错，这些错误肯定会影响到程序的执行结果，例如请求失败、创建资源失败等。要记录每一个发生错误的日志，避免日后排障过程中这些错误被忽略掉。大部分的错误可以归在 Error 级别&lt;/td>
+&lt;td>Lark 转电话&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Panic&lt;/td>
+&lt;td>Panic 级别的日志在实际开发中很少用，通常只在需要错误堆栈，或者不想因为发生严重错误导致程序退出，而采用 defer 处理错误时使用&lt;/td>
+&lt;td>Lark + 电话&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Fatal&lt;/td>
+&lt;td>Fatal 是最高级别的日志，这个级别的日志说明问题已经相当严重，严重到程序无法继续运行，通常是系统级的错误。在开发中也很少使用，除非我们觉得某个错误发生时，整个程序无法继续运行&lt;/td>
+&lt;td>Lark + 电话&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>根据的日志规范 Panic、Fatal 级别的日志不需要打印，如果需要，可以使用Error 级别的日志 + os.Exit() 进行处理。&lt;/p>
+&lt;p>通常， 为了能够及时发现问题并排障，在发生错误日志时，要告警通知到相关的研发或运维，上述表格，也针对不同的日志级别，给出了告警级别，供你参考。&lt;/p>
+&lt;blockquote>
+&lt;p>提示：Lark 指代飞书办公软件。&lt;/p>
+&lt;/blockquote>
+&lt;p>&lt;strong>日志级别选择图：&lt;/strong>
+这里用一张图来总结下，如何选择 Debug、Info、Warn、Error、Panic、Fatal 这几种日志级别。&lt;/p>
+&lt;p>&lt;img src="https://cdn.nlark.com/yuque/0/2024/png/43447143/1713257876347-befa94ca-2330-403c-8c8e-0e61eba99c35.png#averageHue=%23f0f0f0&amp;amp;clientId=u86c1e48d-415c-4&amp;amp;from=paste&amp;amp;id=ucd1808f5&amp;amp;originHeight=812&amp;amp;originWidth=1920&amp;amp;originalType=url&amp;amp;ratio=1.75&amp;amp;rotation=0&amp;amp;showTitle=true&amp;amp;status=done&amp;amp;style=none&amp;amp;taskId=uc89bb048-8134-40fd-9cbc-7c79f7ed8ec&amp;amp;title=%E6%97%A5%E5%BF%97%E7%BA%A7%E5%88%AB%E9%80%89%E6%8B%A9%E5%9B%BE"
+loading="lazy"
+alt="日志级别选择图"
+>&lt;/p>
+&lt;h2 id="日志打印时机">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%89%93%e5%8d%b0%e6%97%b6%e6%9c%ba">#&lt;/a>
+日志打印时机
+&lt;/h2>&lt;p>在打印日志时，要选择合适的时机进行打印，不能随便打印。&lt;/p>
+&lt;h3 id="建议打印时机">
+&lt;a href="#%e5%bb%ba%e8%ae%ae%e6%89%93%e5%8d%b0%e6%97%b6%e6%9c%ba">#&lt;/a>
+建议打印时机
+&lt;/h3>&lt;p>日志主要是用来定位问题的，所以整体来说，我们要在有需要的地方打印日志。那么具体是哪些地方呢？我给你几个建议。&lt;/p>
+&lt;ul>
+&lt;li>打印程序的配置参数：系统在启动过程中通常会首先读启动参数，可以在系统启动后将这些参数输出到日志中，方便确认系统是按照期望的参数启动的；&lt;/li>
+&lt;li>网络通信部分：发送请求前、收到请求结果均应打印 Info 级别的日志。根据我的研发经验，如果你的程序调用了第三方组件，在排障时，需要提供给第三方组件的研发/运维足够的上下文，帮助复现问题，才会得到他们及时有效的支持，所以这里建议在请求第三方接口时，至少要记录请求包、返回包、URL 等信息。注意，如果请求包和返回包很大，需谨慎打印；&lt;/li>
+&lt;li>在分支语句处打印日志：在分支语句处打印日志，可以判断出代码走了哪个分支，有助于判断请求的下一跳，继而继续排查问题；&lt;/li>
+&lt;li>写操作必须打印日志：写操作最可能会引起比较严重的业务故障，写操作打印日志，可以在出问题时找到关键信息；&lt;/li>
+&lt;li>非预期执行时打印日志：如果程序走到了跟我们预期不一样的分支，需要打印日志。例如：正常情况下，服务的某个状态应该是 Running 的，但真实的状态是 Pending 的，这种异常的状态，很可能会带来问题，后期可能需要定位排障，这时候可以打印相关日志；&lt;/li>
+&lt;li>后台定期执行的任务：如定期更新缓存的任务，可以记录任务开始时间，任务结束时间，更新了多少条缓存配置等等，这样可以掌握定期执行的任务的状态；&lt;/li>
+&lt;li>业务流程关键节点：我们经常会面对流程比较复杂的业务流程，在整个流程的关键节点上，可以记录下日志，例如，当进行物品交换时，可以将要交换的物品打印出来；&lt;/li>
+&lt;li>数据状态变化时：服务端程序的最核心的逻辑就是维护数据状态的变化，因此，在状态有变化的时候，可以记录下日志，例如，订单从创建状态变为已支付状态时，可以记录日志；&lt;/li>
+&lt;li>在错误产生的最原始位置打印日志：对于嵌套的 Error，可在 Error 产生的最初位置打印 Error 日志，上层如果不需要添加必要的信息，可以直接返回下层的 Error。我给你举个例子：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;span class="lnt">24
+&lt;/span>&lt;span class="lnt">25
+&lt;/span>&lt;span class="lnt">26
+&lt;/span>&lt;span class="lnt">27
+&lt;/span>&lt;span class="lnt">28
+&lt;/span>&lt;span class="lnt">29
+&lt;/span>&lt;span class="lnt">30
+&lt;/span>&lt;span class="lnt">31
+&lt;/span>&lt;span class="lnt">32
+&lt;/span>&lt;span class="lnt">33
+&lt;/span>&lt;span class="lnt">34
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kn">package&lt;/span> &lt;span class="nx">main&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="p">(&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s">&amp;#34;flag&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s">&amp;#34;fmt&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s">&amp;#34;github.com/golang/glog&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">main&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">flag&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Parse&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">defer&lt;/span> &lt;span class="nx">glog&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Flush&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nf">loadConfig&lt;/span>&lt;span class="p">();&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">!=&lt;/span> &lt;span class="kc">nil&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">glog&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Error&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">err&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">loadConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kt">error&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nf">decodeConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="c1">// 直接返回
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">decodeConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kt">error&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nf">readConfig&lt;/span>&lt;span class="p">();&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">!=&lt;/span> &lt;span class="kc">nil&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">fmt&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;could not decode configuration data for user %s: %v&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s">&amp;#34;colin&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nx">err&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="c1">// 添加必要的信息，用户名称
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="kc">nil&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">readConfig&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kt">error&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">glog&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;read: end of input.&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">fmt&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;read: end of input&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>通过在最初产生错误的位置打印日志，我们可以很方便地追踪到日志的根源，进而在上层追加一些必要的信息。这可以让我们了解到该错误产生的影响，有助于排障。另外，直接返回下层日志，还可以减少重复的日志打印。&lt;/p>
+&lt;p>当代码调用第三方包的函数，且第三方包函数出错时，会打印错误信息。比如：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="k">if&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nx">os&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Chdir&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;/root&amp;#34;&lt;/span>&lt;span class="p">);&lt;/span> &lt;span class="nx">err&lt;/span> &lt;span class="o">!=&lt;/span> &lt;span class="kc">nil&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">log&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Errorf&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;change dir failed: %v&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nx">err&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="不建议打印时机">
+&lt;a href="#%e4%b8%8d%e5%bb%ba%e8%ae%ae%e6%89%93%e5%8d%b0%e6%97%b6%e6%9c%ba">#&lt;/a>
+不建议打印时机
+&lt;/h3>&lt;p>当然，在记录日志时，也有有一些地方是不需要记录日志的，这些地方建议如下：&lt;/p>
+&lt;ul>
+&lt;li>在循环中打印日志要慎重：如果循环次数过多，会导致打印大量的日志，严重拖累代码的性能，建议的办法是在循环中记录要点，在循环外面总结打印出来；&lt;/li>
+&lt;li>QPS 特别高的接口谨慎打印日志：对于 QPS 特别高的接口，要谨慎选择是否打印日志或者少打印日志，否则可能会影响接口的性能和 CPU 的负载。&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志级别设置规范">
+&lt;a href="#%e6%97%a5%e5%bf%97%e7%ba%a7%e5%88%ab%e8%ae%be%e7%bd%ae%e8%a7%84%e8%8c%83">#&lt;/a>
+日志级别设置规范
+&lt;/h2>&lt;ul>
+&lt;li>项目刚刚上线可将日志级别设置为 Debug 级别：
+&lt;ul>
+&lt;li>&lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 设置 level 为 debug；&lt;/li>
+&lt;li>&lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 设置 -v 为 4。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>如果项目经过一段时间的运行，达到一种很稳定的状态，为了不影响性能，需要设置日志级别为 Info：
+&lt;ul>
+&lt;li>&lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 设置 level 为 info；&lt;/li>
+&lt;li>&lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 设置 -v 为 2。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>测试/开发环境可以设置日志级别为 Debug 级别：
+&lt;ul>
+&lt;li>&lt;a class="link" href="http://github.com/superproj/onex/pkg/log" target="_blank" rel="noopener"
+>github.com/superproj/onex/pkg/logopen in new window&lt;/a> 设置 level 为 debug；&lt;/li>
+&lt;li>&lt;a class="link" href="http://k8s.io/klog/v2" target="_blank" rel="noopener"
+>k8s.io/klog/v2open in new window&lt;/a> 设置 -v 为 4。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志格式设置规范">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%a0%bc%e5%bc%8f%e8%ae%be%e7%bd%ae%e8%a7%84%e8%8c%83">#&lt;/a>
+日志格式设置规范
+&lt;/h2>&lt;ul>
+&lt;li>线上日志为了便于日志采集工具采集，需要设置为 JSON 格式；&lt;/li>
+&lt;li>开发、测试环境的日志，可以根据需要设置为TEXT 或 JSON 格式。&lt;/li>
+&lt;/ul>
+&lt;h2 id="日志打印检查">
+&lt;a href="#%e6%97%a5%e5%bf%97%e6%89%93%e5%8d%b0%e6%a3%80%e6%9f%a5">#&lt;/a>
+日志打印检查
+&lt;/h2>&lt;p>Kubernetes 提供了 &lt;a class="link" href="https://github.com/kubernetes-sigs/logtools/tree/main/logcheck" target="_blank" rel="noopener"
+>logcheckopen in new window&lt;/a> 工具，来检查 Kubernetes 中的日志记录是否符合规范。你也可以安装，并检查，命令如下：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-text" data-lang="text">&lt;span class="line">&lt;span class="cl">$ go install sigs.k8s.io/logtools/logcheck@latest
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">$ logcheck -check-contextual ${ONEX_ROOT}/...
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">$ logcheck -check-structured ${ONEX_ROOT}/...
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>${ONEX_ROOT}为根目录，你可以根据需要修改检查目录。&lt;/p>
+&lt;blockquote>
+&lt;p>提示：logcheck工具建议可以了解下，真正的项目开发中，并不实用，尤其不适合集成在 CI 流程中，作为项目发布的强制规范检查。因为很多代码确实难以，也不需要完全遵循logcheck工具制定的规范。&lt;/p>
+&lt;/blockquote>
+&lt;h2 id="其他日志规范参考">
+&lt;a href="#%e5%85%b6%e4%bb%96%e6%97%a5%e5%bf%97%e8%a7%84%e8%8c%83%e5%8f%82%e8%80%83">#&lt;/a>
+其他日志规范参考
+&lt;/h2>&lt;ul>
+&lt;li>Kubernetes 日志记录规范：&lt;a class="link" href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md#what-method-to-use" target="_blank" rel="noopener"
+>Loggingopen in new window&lt;/a>；&lt;/li>
+&lt;li>&lt;a class="link" href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/migration-to-structured-logging.md" target="_blank" rel="noopener"
+>Structured and Contextual Logging migration instructions&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Cloud Native on 哈皮的自言自语</title><link>https://xiuwei.github.io/categories/cloud-native/</link><description>Recent content in Cloud Native on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Sat, 20 Apr 2024 21:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/categories/cloud-native/index.xml" rel="self" type="application/rss+xml"/><item><title>实战指南：在 Kubernetes 上部署 Spring Boot 微服务并实施健康检查</title><link>https://xiuwei.github.io/p/kubernetes-springboot-health-check/</link><pubDate>Sat, 20 Apr 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/kubernetes-springboot-health-check/</guid><description>&lt;img src="https://xiuwei.github.io/p/kubernetes-springboot-health-check/cover.jpg" alt="Featured image of post 实战指南：在 Kubernetes 上部署 Spring Boot 微服务并实施健康检查" />&lt;h2 id="1-引言">
+&lt;a href="#1-%e5%bc%95%e8%a8%80">#&lt;/a>
+1. 引言
+&lt;/h2>&lt;p>在云原生应用开发中，健康检查是确保微服务可靠性和稳定性的关键环节。特别是在 Kubernetes 这样的容器编排平台上，通过健康检查可以有效地监控和管理应用程序的状态，及时发现并处理潜在的故障情况，从而确保整个系统的正常运行。&lt;/p>
+&lt;p>而 Spring Boot 作为一种流行的 Java 微服务框架，其在 Kubernetes 上的部署和健康检查配置也是开发者们关注的焦点。本文将针对这一问题，提供一套完整的实战指南，帮助读者深入了解在 Kubernetes 环境中部署 Spring Boot 微服务并实施健康检查的步骤和方法。&lt;/p>
+&lt;h2 id="2-原理">
+&lt;a href="#2-%e5%8e%9f%e7%90%86">#&lt;/a>
+2. 原理
+&lt;/h2>&lt;h3 id="21-kubernetes健康检查机制">
+&lt;a href="#21-kubernetes%e5%81%a5%e5%ba%b7%e6%a3%80%e6%9f%a5%e6%9c%ba%e5%88%b6">#&lt;/a>
+2.1 Kubernetes健康检查机制
+&lt;/h3>&lt;p>Kubernetes中的健康检查主要使用 就绪性探针 &lt;code>readinessProbe&lt;/code> 、存活性探针 &lt;code>livenessProbe&lt;/code> 和启动探针 &lt;code>startupProbe&lt;/code> 来实现，service即为负载均衡，k8s保证 service 后面的 pod 都可用，是k8s中自愈能力的主要手段，主要基于这两种探测机制，可以实现如下需求：&lt;/p>
+&lt;ul>
+&lt;li>异常实例自动剔除，并重启新实例。&lt;/li>
+&lt;li>多种类型探针检测，保证异常pod不接入流量。&lt;/li>
+&lt;li>不停机部署，更安全的滚动升级。&lt;/li>
+&lt;/ul>
+&lt;h4 id="211-探针类型">
+&lt;a href="#211-%e6%8e%a2%e9%92%88%e7%b1%bb%e5%9e%8b">#&lt;/a>
+2.1.1 探针类型
+&lt;/h4>&lt;p>针对运行中的容器，&lt;code>kubelet&lt;/code> 可以选择是否执行以下三种探针，以及如何针对探测结果作出反应：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>livenessProbe:&lt;/strong> 指示容器是否正在运行。如果存活态探测失败，则 kubelet 会杀死容器， 并且容器将根据其&lt;code>重启策略&lt;/code>进行重启。如果容器不提供存活探针，则默认状态为 Success。&lt;/li>
+&lt;li>&lt;strong>readinessProbe:&lt;/strong> 指示容器是否准备好为请求提供服务。如果就绪态探测失败， 端点控制器将从与 Pod 匹配的所有服务的端点列表中删除该 Pod 的 IP 地址。初始延迟之前的就绪态的状态值默认为 &lt;code>Failure&lt;/code>。 如果容器不提供就绪态探针，则默认状态为 &lt;code>Success。&lt;/code>&lt;/li>
+&lt;li>&lt;strong>startupProbe:&lt;/strong> 指示容器中的应用是否已经启动。如果提供了启动探针，则所有其他探针都会被 禁用，直到此探针成功为止。如果启动探测失败，kubelet 将杀死容器，而容器依其&lt;code>重启策略&lt;/code>进行重启。 如果容器没有提供启动探测，则默认状态为 &lt;code>Success。&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;h4 id="212-探针结果">
+&lt;a href="#212-%e6%8e%a2%e9%92%88%e7%bb%93%e6%9e%9c">#&lt;/a>
+2.1.2 探针结果
+&lt;/h4>&lt;p>每次探测都将获得以下三种结果之一：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>Success（成功）:&lt;/strong> 容器通过了诊断。&lt;/li>
+&lt;li>&lt;strong>Failure（失败）:&lt;/strong> 容器未通过诊断。&lt;/li>
+&lt;li>&lt;strong>Unknown（未知）:&lt;/strong> 诊断失败，因此不会采取任何行动。&lt;/li>
+&lt;/ul>
+&lt;h4 id="213-探针检查机制">
+&lt;a href="#213-%e6%8e%a2%e9%92%88%e6%a3%80%e6%9f%a5%e6%9c%ba%e5%88%b6">#&lt;/a>
+2.1.3 探针检查机制
+&lt;/h4>&lt;p>使用探针来检查容器有四种不同的方法。 每个探针都必须准确定义为这四种机制中的一种：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>exec：&lt;/strong> 在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。&lt;/li>
+&lt;li>&lt;strong>grpc：&lt;/strong> 使用 gRPC 执行一个远程过程调用。 目标应该实现 gRPC 健康检查。 如果响应的状态是 &amp;ldquo;SERVING&amp;rdquo;，则认为诊断成功。&lt;/li>
+&lt;li>&lt;strong>httpGet：&lt;/strong> 对容器的 IP 地址上指定端口和路径执行 HTTP GET 请求。如果响应的状态码大于等于 200 且小于 400，则诊断被认为是成功的。&lt;/li>
+&lt;li>&lt;strong>tcpSocket：&lt;/strong> 对容器的 IP 地址上的指定端口执行 TCP 检查。如果端口打开，则诊断被认为是成功的。 如果远程系统（容器）在打开连接后立即将其关闭，这算作是健康的。&lt;/li>
+&lt;/ul>
+&lt;h3 id="22-spring-boot对kubernetes容器探针的支持">
+&lt;a href="#22-spring-boot%e5%af%b9kubernetes%e5%ae%b9%e5%99%a8%e6%8e%a2%e9%92%88%e7%9a%84%e6%94%af%e6%8c%81">#&lt;/a>
+2.2 Spring Boot对Kubernetes容器探针的支持
+&lt;/h3>&lt;p>Spring Boot 2.3 版本引入了容器探针功能，其中包括了 &lt;code>/actuator/health/liveness&lt;/code> 和 &lt;code>/actuator/health/readiness&lt;/code> 这两个健康检查路径。这些路径是为了更好地支持部署在 Kubernetes 等容器环境中的应用程序。&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>/actuator/health/liveness&lt;/code> 用于存活性检查，用于确定应用程序是否仍然在运行。&lt;/li>
+&lt;li>&lt;code>/actuator/health/readiness&lt;/code> 用于就绪性检查，用于确定应用程序是否准备好接收流量。&lt;/li>
+&lt;/ul>
+&lt;p>Spring Boot Actuator 会自动将这两个路径暴露出来，并通过它们来执行相应的健康检查。这样，当你在 Kubernetes 中部署 Spring Boot 应用程序时，Kubernetes 可以利用这些路径来确定容器是否健康和准备好接收流量。&lt;/p>
+&lt;p>这种集成简化了在 Kubernetes 中部署 Spring Boot 应用程序的流程，并提高了应用程序的可靠性和可用性。&lt;/p>
+&lt;h4 id="221-spring-boot-如何识别k8s环境">
+&lt;a href="#221-spring-boot-%e5%a6%82%e4%bd%95%e8%af%86%e5%88%abk8s%e7%8e%af%e5%a2%83">#&lt;/a>
+2.2.1 Spring Boot 如何识别k8s环境
+&lt;/h4>&lt;p>Spring Boot 通过检查环境中的 &lt;code>&amp;quot;*_SERVICE_HOST&amp;quot;&lt;/code> 和 &lt;code>&amp;quot;*_SERVICE_PORT&amp;quot;&lt;/code> 变量来自动检测 Kubernetes 部署环境。也可以使用 &lt;code>spring.main.cloud-platform&lt;/code> 配置属性覆盖此检测。&lt;/p>
+&lt;p>Spring Boot 识别到 Kubernetes 环境后，Spring Boot Actuator 会自动将&lt;code>/actuator/health/liveness&lt;/code> 和 &lt;code>/actuator/health/readiness&lt;/code>这两个端点暴露出来。&lt;/p>
+&lt;blockquote>
+&lt;p>小技巧：本地验证这一特性可以通过手动设置 &lt;em>KUBERNETES_SERVICE_HOST&lt;/em> 和 &lt;em>KUBERNETES_SERVICE_PORT&lt;/em> 这两个环境变量来开启存活和就绪检查。访问 &lt;em>http://localhost:8080/actuator/health/liveness&lt;/em> 响应200状态码时代表已开启。&lt;/p>
+&lt;/blockquote>
+&lt;h4 id="222-spring-boot-与k8s容器探针的结合">
+&lt;a href="#222-spring-boot-%e4%b8%8ek8s%e5%ae%b9%e5%99%a8%e6%8e%a2%e9%92%88%e7%9a%84%e7%bb%93%e5%90%88">#&lt;/a>
+2.2.2 Spring Boot 与k8s容器探针的结合
+&lt;/h4>&lt;p>默认情况下，Spring Boot 管理应用程序可用性状态。如果部署在 Kubernetes 环境中，Actuator 会从收集“Liveness”和“Readiness”信息，并将该信息用于各类专用的 &lt;code>HealthIndicators&lt;/code>。&lt;/p>
+&lt;p>Kubernetes 存活与就绪检查配置示例：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">livenessProbe&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">httpGet&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">path&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="s2">&amp;#34;/actuator/health/liveness&amp;#34;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">&amp;lt;actuator-port&amp;gt;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">failureThreshold&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">periodSeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">readinessProbe&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">httpGet&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">path&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="s2">&amp;#34;/actuator/health/readiness&amp;#34;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">&amp;lt;actuator-port&amp;gt;&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">failureThreshold&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">periodSeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">...&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;blockquote>
+&lt;p>&lt;actuator-port> 应设置为 actuator endpoints 的端口。它可能是 Web 服务器端口或为 Actuator 单独设置的端口。通过 &amp;ldquo;management.server.port&amp;rdquo; 配置指定。&lt;/p>
+&lt;/blockquote>
+&lt;h4 id="223-spring-boot-生命周期与探测状态">
+&lt;a href="#223-spring-boot-%e7%94%9f%e5%91%bd%e5%91%a8%e6%9c%9f%e4%b8%8e%e6%8e%a2%e6%b5%8b%e7%8a%b6%e6%80%81">#&lt;/a>
+2.2.3 Spring Boot 生命周期与探测状态
+&lt;/h4>&lt;p>Kubernetes Probes 支持的一个重要方面是它与应用程序生命周期的一致性。（应用程序的内存中内部状态）和实际探针（公开该状态）之间存在显着差异。根据应用程序生命周期的阶段，探测器可能不可用。&lt;/p>
+&lt;p>Spring Boot 在启动和关闭期间发布 &lt;em>Application Events&lt;/em>，探测器可以监听此类事件并暴露 &lt;em>AvailabilityState&lt;/em> 信息。&lt;/p>
+&lt;p>下表显示了AvailabilityState和HTTP连接器在不同阶段的状态。&lt;/p>
+&lt;p>当 Spring Boot 应用程序启动时：
+&lt;img src="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image.png"
+width="1990"
+height="542"
+srcset="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image_hub8d9176f3a8360729b7465a357c86566_137478_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/kubernetes-springboot-health-check/image_hub8d9176f3a8360729b7465a357c86566_137478_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="367"
+data-flex-basis="881px"
+>&lt;/p>
+&lt;p>当 Spring Boot 应用程序 关闭时:
+&lt;img src="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image-1.png"
+width="1948"
+height="498"
+srcset="https://xiuwei.github.io/p/kubernetes-springboot-health-check/image-1_hu05efa868d7dab2ee38f7d14b4f8433cc_122400_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/kubernetes-springboot-health-check/image-1_hu05efa868d7dab2ee38f7d14b4f8433cc_122400_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="391"
+data-flex-basis="938px"
+>&lt;/p>
+&lt;h2 id="3-准备工作">
+&lt;a href="#3-%e5%87%86%e5%a4%87%e5%b7%a5%e4%bd%9c">#&lt;/a>
+3. 准备工作
+&lt;/h2>&lt;p>在开始部署 Spring Boot 微服务到 Kubernetes 之前，我们首先需要准备好以下工作环境和所需工具：&lt;/p>
+&lt;ul>
+&lt;li>一个运行正常的 Kubernetes 集群，可以是本地的 minikube 集群或者云上的托管 Kubernetes 服务。&lt;/li>
+&lt;li>已经构建好的 Spring Boot 应用程序的 Docker 镜像，可以通过 Dockerfile 构建，或者使用 Maven 插件和 Docker 插件直接构建。&lt;/li>
+&lt;li>Kubernetes 部署和服务资源的 YAML 配置文件，用于定义应用程序的部署、服务和健康检查配置。&lt;/li>
+&lt;/ul>
+&lt;h2 id="4-在-kubernetes-中部署-spring-boot-微服务">
+&lt;a href="#4-%e5%9c%a8-kubernetes-%e4%b8%ad%e9%83%a8%e7%bd%b2-spring-boot-%e5%be%ae%e6%9c%8d%e5%8a%a1">#&lt;/a>
+4. 在 Kubernetes 中部署 Spring Boot 微服务
+&lt;/h2>&lt;p>在准备工作完成之后，我们就可以开始在 Kubernetes 中部署 Spring Boot 微服务了。首先，我们需要创建一个 Kubernetes 部署资源，用来描述应用程序的容器镜像、副本数等信息。接下来，我们再创建一个 Kubernetes 服务资源，用来暴露应用程序的网络端口，以便其他服务可以访问到该应用程序。让我们一起来看看具体的操作步骤：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>创建 Kubernetes 部署资源：&lt;/strong> 在 Kubernetes 中，部署资源用于定义应用程序的部署策略和运行配置。我们可以通过一个 YAML 配置文件来创建一个部署资源，示例配置文件如下所示：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">apiVersion&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">apps/v1&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">kind&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">Deployment&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">metadata&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">name&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">spec&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">replicas&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">3&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">selector&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">matchLabels&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">app&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">template&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">metadata&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">labels&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">app&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">spec&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">containers&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>- &lt;span class="nt">name&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">image&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">your-docker-registry/my-springboot-app:latest&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">ports&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>- &lt;span class="nt">containerPort&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">8080&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>在这个示例中，我们定义了一个名为 &lt;code>my-springboot-app&lt;/code> 的 Deployment 资源，指定了要运行的容器镜像和副本数，并暴露了容器的 8080 端口。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>创建 Kubernetes 服务资源：&lt;/strong> 在 Kubernetes 中，服务资源用于定义应用程序的网络访问方式和负载均衡策略。我们同样可以通过一个 YAML 配置文件来创建一个服务资源，示例配置文件如下所示：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">apiVersion&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">v1&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">kind&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">Service&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">metadata&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">name&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app-service&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w">&lt;/span>&lt;span class="nt">spec&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">selector&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">app&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">my-springboot-app&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">ports&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>- &lt;span class="nt">protocol&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">TCP&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">80&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">targetPort&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">8080&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">type&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">LoadBalancer&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>在这个示例中，我们定义了一个名为 &lt;code>my-springboot-app-service&lt;/code> 的 Service 资源，通过 &lt;code>selector&lt;/code> 字段指定了要负载均衡的 Deployment，并将容器的 8080 端口映射到了服务的 80 端口。&lt;/p>
+&lt;p>通过上述步骤，我们就可以成功地在 Kubernetes 中部署了一个运行 Spring Boot 微服务的容器应用程序。接下来，我们将重点关注如何配置和实施健康检查，以确保应用程序的稳定性和可靠性。&lt;/p>
+&lt;h2 id="5-配置健康检查">
+&lt;a href="#5-%e9%85%8d%e7%bd%ae%e5%81%a5%e5%ba%b7%e6%a3%80%e6%9f%a5">#&lt;/a>
+5. 配置健康检查
+&lt;/h2>&lt;p>在 Kubernetes 中，健康检查通过 liveness 探针和 readiness 探针来实现。liveness 探针用于检查应用程序是否处于运行状态，而 readiness 探针用于检查应用程序是否已准备好接收流量。下面我们将分别介绍如何在 Spring Boot 应用程序中实现这两种探针，并在 Kubernetes 中进行配置。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>实现 liveness 探针：&lt;/strong> 在 Spring Boot 应用程序中实现 liveness 探针非常简单，我们只需创建一个端点接口，用于检查应用程序的运行状态即可。例如，我们可以创建一个 &lt;code>/actuator/health&lt;/code> 的端点，用于返回应用程序的健康状态。在 Spring Boot 应用程序中，我们可以通过 Spring Boot Actuator 模块来实现这一功能。在 &lt;code>application.properties&lt;/code> 配置文件中添加以下配置：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-properties" data-lang="properties">&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.probes.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoints.web.exposure.include&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">health&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>然后，我们就可以访问 &lt;code>/actuator/health&lt;/code> 端点来检查应用程序的运行状态了。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>实现 readiness 探针：&lt;/strong> 与 liveness 探针类似，实现 readiness 探针也很简单。我们可以创建一个类似的端点接口，用于检查应用程序是否已准备好接收流量。例如，我们可以创建一个 &lt;code>/actuator/readiness&lt;/code> 的端点，用于返回应用程序的就绪状态。同样地，我们可以通过 Spring Boot Actuator 模块来实现这一功能，在 &lt;code>application.properties&lt;/code> 配置文件中添加以下配置：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-properties" data-lang="properties">&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.probes.enabled&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">true&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="na">management.endpoint.health.probes.include&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s">readiness&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>然后，我们就可以访问 &lt;code>/actuator/readiness&lt;/code> 端点来检查应用程序的就绪状态了。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>在 Kubernetes 中配置健康检查：&lt;/strong> 在 Kubernetes 的部署配置文件中，我们可以通过 &lt;code>livenessProbe&lt;/code> 和 &lt;code>readinessProbe&lt;/code> 字段来定义容器的健康检查。例如，我们可以使用以下配置来定义一个 liveness 探针：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-yaml" data-lang="yaml">&lt;span class="line">&lt;span class="cl">&lt;span class="nt">livenessProbe&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">httpGet&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">path&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="l">/actuator/health&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">port&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">8080&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">initialDelaySeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">30&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="w"> &lt;/span>&lt;span class="nt">periodSeconds&lt;/span>&lt;span class="p">:&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="m">10&lt;/span>&lt;span class="w">
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>这个配置将会在容器启动后等待 30 秒后开始进行 liveness 探测，每隔 10 秒进行一次探测，检查 &lt;code>/actuator/health&lt;/code> 端点的返回状态。&lt;/p>
+&lt;p>类似地，我们也可以使用类似的配置来定义一个 readiness 探针。&lt;/p>
+&lt;p>通过上述步骤，我们就成功地在 Spring Boot 应用程序中实现了 liveness 探针和 readiness 探针，并在 Kubernetes 中进行了相应的配置。接下来，我们将进行实战演练，验证健康检查的配置是否生效，以及如何使用 kubectl 命令来查看应用程序的健康状态。&lt;/p>
+&lt;h2 id="6-验证">
+&lt;a href="#6-%e9%aa%8c%e8%af%81">#&lt;/a>
+6. 验证
+&lt;/h2>&lt;p>在本节中，我们将演示如何使用 kubectl 命令来查看应用程序的健康状态，并验证健康检查的配置是否生效。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>查看 liveness 探针状态：&lt;/strong> 使用以下命令可以查看应用程序的 liveness 探针状态：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">kubectl describe pod &amp;lt;pod_name&amp;gt;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>该命令将输出包含容器状态和事件的详细信息。在输出结果中，可以找到有关 liveness 探针的相关信息，例如探针的执行结果和最后一次执行的时间戳。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>验证 readiness 探针状态：&lt;/strong> 使用以下命令可以验证应用程序的 readiness 探针状态：&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">kubectl get pods
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>该命令将列出所有运行中的 Pod，并显示它们的状态。通过观察 READY 列中的值，可以了解到每个 Pod 是否已准备好接收流量。&lt;/p>
+&lt;p>通过上述命令，我们可以轻松地验证健康检查的配置是否生效，并了解应用程序的健康状态。如果出现健康检查失败或异常的情况，我们还可以使用 kubectl 命令来进行故障排除和调试，以找出问题的根源并及时处理。&lt;/p>
+&lt;h2 id="7-总结">
+&lt;a href="#7-%e6%80%bb%e7%bb%93">#&lt;/a>
+7. 总结
+&lt;/h2>&lt;p>通过本文的实战指南，我们深入探讨了在 Kubernetes 环境中部署 Spring Boot 微服务并实施健康检查的方法和步骤。我们首先介绍了健康检查的概念和重要性，然后详细讲解了如何在 Spring Boot 应用程序中实现 liveness 探针和 readiness 探针，并在 Kubernetes 中进行配置。最后，我们进行了实战演练，验证了健康检查的配置是否生效，并了解了如何使用 kubectl 命令来查看应用程序的健康状态和进行故障排除。&lt;/p>
+&lt;p>通过正确地配置和实施健康检查，我们可以有效地监控和管理应用程序的状态，及时发现并处理潜在的故障情况，从而确保整个系统的正常运行。希望本文对您理解和掌握云原生健康检查的实践技巧有所帮助，也欢迎您在实际应用中进行进一步的尝试和探索。&lt;/p>
+&lt;h2 id="参考资料">
+&lt;a href="#%e5%8f%82%e8%80%83%e8%b5%84%e6%96%99">#&lt;/a>
+参考资料
+&lt;/h2>&lt;ul>
+&lt;li>&lt;a class="link" href="https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-lifecycle/#container-probes" target="_blank" rel="noopener"
+>https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-lifecycle/#container-probes&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes" target="_blank" rel="noopener"
+>https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints.kubernetes-probes" target="_blank" rel="noopener"
+>https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints.kubernetes-probes&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment.cloud.kubernetes.container-lifecycle" target="_blank" rel="noopener"
+>https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment.cloud.kubernetes.container-lifecycle&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://docs.spring.io/spring-boot/docs/current/reference/html/web.html#web.graceful-shutdown" target="_blank" rel="noopener"
+>https://docs.spring.io/spring-boot/docs/current/reference/html/web.html#web.graceful-shutdown&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

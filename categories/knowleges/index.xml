@@ -1,0 +1,738 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Knowleges on 哈皮的自言自语</title><link>https://xiuwei.github.io/categories/knowleges/</link><description>Recent content in Knowleges on 哈皮的自言自语</description><generator>Hugo -- gohugo.io</generator><language>zh-Hans</language><lastBuildDate>Fri, 12 Apr 2024 21:00:00 +0000</lastBuildDate><atom:link href="https://xiuwei.github.io/categories/knowleges/index.xml" rel="self" type="application/rss+xml"/><item><title>解析 AMQP 0-9-1 模型：构建可靠的消息传递系统</title><link>https://xiuwei.github.io/p/amqp_0-9-1_model_explained/</link><pubDate>Fri, 12 Apr 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/amqp_0-9-1_model_explained/</guid><description>&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/cover.jpg" alt="Featured image of post 解析 AMQP 0-9-1 模型：构建可靠的消息传递系统" />&lt;h2 id="amqp-0-9-1-和-amqp-模型高阶概述">
+&lt;a href="#amqp-0-9-1-%e5%92%8c-amqp-%e6%a8%a1%e5%9e%8b%e9%ab%98%e9%98%b6%e6%a6%82%e8%bf%b0">#&lt;/a>
+AMQP 0-9-1 和 AMQP 模型高阶概述
+&lt;/h2>&lt;h3 id="amqp-0-9-1-是什么">
+&lt;a href="#amqp-0-9-1-%e6%98%af%e4%bb%80%e4%b9%88">#&lt;/a>
+AMQP 0-9-1 是什么?
+&lt;/h3>&lt;p>AMQP（高级消息队列协议）是一个网络协议。它支持符合要求的客户端应用（application）和消息中间件代理（messaging middleware broker）之间进行通信。&lt;/p>
+&lt;h3 id="消息代理brokers和他们所扮演的角色">
+&lt;a href="#%e6%b6%88%e6%81%af%e4%bb%a3%e7%90%86brokers%e5%92%8c%e4%bb%96%e4%bb%ac%e6%89%80%e6%89%ae%e6%bc%94%e7%9a%84%e8%a7%92%e8%89%b2">#&lt;/a>
+消息代理（Brokers）和他们所扮演的角色
+&lt;/h3>&lt;p>消息代理（Messaging brokers）从发布者（publishers）亦称生产者（producers）那儿接收消息，并根据既定的路由规则把接收到的消息发送给处理消息的消费者（consumers）。&lt;/p>
+&lt;p>由于AMQP是一个网络协议，所以这个过程中的发布者，消费者，消息代理 可以存在于不同的设备上。&lt;/p>
+&lt;h3 id="amqp-0-9-1-模型简介">
+&lt;a href="#amqp-0-9-1-%e6%a8%a1%e5%9e%8b%e7%ae%80%e4%bb%8b">#&lt;/a>
+AMQP 0-9-1 模型简介
+&lt;/h3>&lt;p>AMQP 0-9-1的工作过程如下图：消息（message）被发布者（publisher）发送给交换机（exchange），交换机常常被比喻成邮局或者邮箱。然后交换机将收到的消息根据路由规则分发给绑定的队列（queue）。最后AMQP代理会将消息投递给订阅了此队列的消费者，或者消费者按照需求自行获取。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image.png"
+width="700"
+height="328"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image_hu9df082a53ba58215e84dbde1a02364d6_51728_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image_hu9df082a53ba58215e84dbde1a02364d6_51728_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="AMQP 0-9-1的工作过程"
+class="gallery-image"
+data-flex-grow="213"
+data-flex-basis="512px"
+>&lt;/p>
+&lt;p>发布者（publisher）发布消息时可以给消息指定各种消息属性（message meta-data）。有些属性有可能会被消息代理（brokers）使用，然而其他的属性则是完全不透明的，它们只能被接收消息的应用所使用。&lt;/p>
+&lt;p>从安全角度考虑，网络是不可靠的，接收消息的应用也有可能在处理消息的时候失败。基于此原因，AMQP模块包含了一个消息确认（message acknowledgements）的概念：当一个消息从队列中投递给消费者后（consumer），消费者会通知一下消息代理（broker），这个可以是自动的也可以由处理消息的应用的开发者执行。当“消息确认”被启用的时候，消息代理不会完全将消息从队列中删除，直到它收到来自消费者的确认回执（acknowledgement）。&lt;/p>
+&lt;p>在某些情况下，例如当一个消息无法被成功路由时，消息或许会被返回给发布者并被丢弃。或者，如果消息代理执行了延期操作，消息会被放入一个所谓的死信队列中。此时，消息发布者可以选择某些参数来处理这些特殊情况。&lt;/p>
+&lt;p>队列，交换机和绑定统称为AMQP实体（AMQP entities）。&lt;/p>
+&lt;h3 id="amqp-0-9-1-是一个可编程的协议">
+&lt;a href="#amqp-0-9-1-%e6%98%af%e4%b8%80%e4%b8%aa%e5%8f%af%e7%bc%96%e7%a8%8b%e7%9a%84%e5%8d%8f%e8%ae%ae">#&lt;/a>
+AMQP 0-9-1 是一个可编程的协议
+&lt;/h3>&lt;p>AMQP 0-9-1是一个可编程协议，某种意义上说AMQP的实体和路由规则是由应用本身定义的，而不是由消息代理定义。包括像声明队列和交换机，定义他们之间的绑定，订阅队列等等关于协议本身的操作。&lt;/p>
+&lt;p>这虽然能让开发人员自由发挥，但也需要他们注意潜在的定义冲突。当然这在实践中很少会发生，如果发生，会以配置错误（misconfiguration）的形式表现出来。&lt;/p>
+&lt;p>应用程序（Applications）声明AMQP实体，定义需要的路由方案，或者删除不再需要的AMQP实体。&lt;/p>
+&lt;h2 id="交换机和交换机类型">
+&lt;a href="#%e4%ba%a4%e6%8d%a2%e6%9c%ba%e5%92%8c%e4%ba%a4%e6%8d%a2%e6%9c%ba%e7%b1%bb%e5%9e%8b">#&lt;/a>
+交换机和交换机类型
+&lt;/h2>&lt;p>交换机是用来发送消息的AMQP实体。交换机拿到一个消息之后将它路由给一个或零个队列。它使用哪种路由算法是由交换机类型和被称作绑定（bindings）的规则所决定的。AMQP 0-9-1的代理提供了四种交换机。&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>Exchange type&lt;/th>
+&lt;th>Default pre-declared names&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>Direct exchange&lt;/td>
+&lt;td>(Empty string) and amq.direct&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Fanout exchange&lt;/td>
+&lt;td>amq.fanout&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Topic exchange&lt;/td>
+&lt;td>amq.topic&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>Headers exchange&lt;/td>
+&lt;td>amq.match (and amq.headers in RabbitMQ)&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>除交换机类型外，在声明交换机时还可以附带许多其他的属性，其中最重要的几个分别是：&lt;/p>
+&lt;ul>
+&lt;li>Name&lt;/li>
+&lt;li>Durability （消息代理重启后，交换机是否还存在）&lt;/li>
+&lt;li>Auto-delete （当所有与之绑定的消息队列都完成了对此交换机的使用后，删掉它）&lt;/li>
+&lt;li>Arguments（依赖代理本身）&lt;/li>
+&lt;/ul>
+&lt;p>交换机可以有两个状态：持久（durable）、暂存（transient）。持久化的交换机会在消息代理（broker）重启后依旧存在，而暂存的交换机则不会（它们需要在代理再次上线后重新被声明）。然而并不是所有的应用场景都需要持久化的交换机。&lt;/p>
+&lt;h3 id="默认交换机default-exchange">
+&lt;a href="#%e9%bb%98%e8%ae%a4%e4%ba%a4%e6%8d%a2%e6%9c%badefault-exchange">#&lt;/a>
+默认交换机（Default Exchange）
+&lt;/h3>&lt;p>默认交换机（default exchange）实际上是一个由消息代理预先声明好的没有名字（名字为空字符串）的直连交换机（direct exchange）。它有一个特殊的属性使得它对于简单应用特别有用处：那就是每个新建队列（queue）都会自动绑定到默认交换机上，绑定的路由键（routing key）名称与队列名称相同。&lt;/p>
+&lt;p>举个栗子：当你声明了一个名为&amp;quot;search-indexing-online&amp;quot;的队列，AMQP代理会自动将其绑定到默认交换机上，绑定（binding）的路由键名称也是为&amp;quot;search-indexing-online&amp;quot;。因此，当携带着名为&amp;quot;search-indexing-online&amp;quot;的路由键的消息被发送到默认交换机的时候，此消息会被默认交换机路由至名为&amp;quot;search-indexing-online&amp;quot;的队列中。换句话说，默认交换机看起来貌似能够直接将消息投递给队列，尽管技术上并没有做相关的操作。&lt;/p>
+&lt;h3 id="直连交换机direct-exchange">
+&lt;a href="#%e7%9b%b4%e8%bf%9e%e4%ba%a4%e6%8d%a2%e6%9c%badirect-exchange">#&lt;/a>
+直连交换机（Direct Exchange）
+&lt;/h3>&lt;p>直连型交换机（direct exchange）是根据消息携带的路由键（routing key）将消息投递给对应队列的。直连交换机用来处理消息的单播路由（unicast routing）（尽管它也可以处理多播路由）。&lt;/p>
+&lt;p>下边介绍它是如何工作的：&lt;/p>
+&lt;ul>
+&lt;li>将一个队列绑定到某个交换机上，同时赋予该绑定一个路由键（routing key）K&lt;/li>
+&lt;li>当一个携带着路由键为 R 的消息被发送给直连交换机时，交换机会把它路由给绑定值同样为R的队列，即K = R&lt;/li>
+&lt;li>如果多个队列绑定到具有相同路由键 K 的直接交换机，则交换机会将消息路由到 K = R 的所有队列&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-1.png"
+width="698"
+height="526"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-1_hu1369f4caf9cfd49ce6feaf0257bd2424_130923_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-1_hu1369f4caf9cfd49ce6feaf0257bd2424_130923_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="直连型交换机图例"
+class="gallery-image"
+data-flex-grow="132"
+data-flex-basis="318px"
+>&lt;/p>
+&lt;h3 id="扇型交换机fanout-exchange">
+&lt;a href="#%e6%89%87%e5%9e%8b%e4%ba%a4%e6%8d%a2%e6%9c%bafanout-exchange">#&lt;/a>
+扇型交换机（Fanout Exchange）
+&lt;/h3>&lt;p>扇型交换机（funout exchange）将消息路由给绑定到它身上的所有队列，而不理会绑定的路由键。如果N个队列绑定到某个扇型交换机上，当有消息发送给此扇型交换机时，交换机会将消息的拷贝分别发送给这所有的N个队列。扇型用来交换机处理消息的广播路由（broadcast routing）。&lt;/p>
+&lt;p>因为扇型交换机投递消息的拷贝到所有绑定到它的队列，所以他的应用案例都极其相似：&lt;/p>
+&lt;ul>
+&lt;li>大规模多用户在线（MMO）游戏可以使用它来处理排行榜更新等全局事件&lt;/li>
+&lt;li>体育新闻网站可以用它来近乎实时地将比分更新分发给移动客户端&lt;/li>
+&lt;li>分发系统使用它来广播各种状态和配置更新&lt;/li>
+&lt;li>在群聊的时候，它被用来分发消息给参与群聊的用户。（AMQP没有内置presence的概念，因此XMPP可能会是个更好的选择）&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-2.png"
+width="698"
+height="463"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-2_hu8fecc7ee99a13019f043a47adb021a3a_76255_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-2_hu8fecc7ee99a13019f043a47adb021a3a_76255_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="扇型交换机图例"
+class="gallery-image"
+data-flex-grow="150"
+data-flex-basis="361px"
+>&lt;/p>
+&lt;h3 id="主题交换机topic-exchange">
+&lt;a href="#%e4%b8%bb%e9%a2%98%e4%ba%a4%e6%8d%a2%e6%9c%batopic-exchange">#&lt;/a>
+主题交换机（Topic Exchange）
+&lt;/h3>&lt;p>主题交换机（topic exchanges）通过对消息的路由键和队列到交换机的绑定模式之间的匹配，将消息路由给一个或多个队列。主题交换机经常用来实现各种分发/订阅模式及其变种。主题交换机通常用来实现消息的多播路由（multicast routing）。&lt;/p>
+&lt;p>主题交换机拥有非常广泛的用户案例。无论何时，当一个问题涉及到那些想要有针对性的选择需要接收消息的 多消费者/多应用（multiple consumers/applications） 的时候，主题交换机都可以被列入考虑范围。&lt;/p>
+&lt;p>使用案例：&lt;/p>
+&lt;ul>
+&lt;li>分发有关于特定地理位置的数据，例如销售点&lt;/li>
+&lt;li>由多个工作者（workers）完成的后台任务，每个工作者负责处理某些特定的任务&lt;/li>
+&lt;li>股票价格更新（以及其他类型的金融数据更新）&lt;/li>
+&lt;li>涉及到分类或者标签的新闻更新（例如，针对特定的运动项目或者队伍）&lt;/li>
+&lt;li>云端的不同种类服务的协调&lt;/li>
+&lt;li>分布式架构/基于系统的软件封装，其中每个构建者仅能处理一个特定的架构或者系统。&lt;/li>
+&lt;/ul>
+&lt;h3 id="头交换机headers-exchange">
+&lt;a href="#%e5%a4%b4%e4%ba%a4%e6%8d%a2%e6%9c%baheaders-exchange">#&lt;/a>
+头交换机（Headers Exchange）
+&lt;/h3>&lt;p>有时消息的路由操作会涉及到多个属性，此时使用消息头就比用路由键更容易表达，头交换机（headers exchange）就是为此而生的。头交换机使用多个消息属性来代替路由键建立路由规则。通过判断消息头的值能否与指定的绑定相匹配来确立路由规则。&lt;/p>
+&lt;p>我们可以绑定一个队列到头交换机上，并给他们之间的绑定使用多个用于匹配的头（header）。这个案例中，消息代理得从应用开发者那儿取到更多一段信息，换句话说，它需要考虑某条消息（message）是需要部分匹配还是全部匹配。上边说的“更多一段消息”就是&amp;quot;x-match&amp;quot;参数。当&amp;quot;x-match&amp;quot;设置为“any”时，消息头的任意一个值被匹配就可以满足条件，而当&amp;quot;x-match&amp;quot;设置为“all”的时候，就需要消息头的所有值都匹配成功。&lt;/p>
+&lt;p>头交换机可以视为直连交换机的另一种表现形式。头交换机能够像直连交换机一样工作，不同之处在于头交换机的路由规则是建立在头属性值之上，而不是路由键。路由键必须是一个字符串，而头属性值则没有这个约束，它们甚至可以是整数或者哈希值（字典）等。&lt;/p>
+&lt;h2 id="队列queues">
+&lt;a href="#%e9%98%9f%e5%88%97queues">#&lt;/a>
+队列（Queues）
+&lt;/h2>&lt;p>AMQP中的队列（queue）跟其他消息队列或任务队列中的队列是很相似的：它们存储着即将被应用消费掉的消息。队列跟交换机共享某些属性，但是队列也有一些另外的属性。&lt;/p>
+&lt;ul>
+&lt;li>Name&lt;/li>
+&lt;li>Durable（消息代理重启后，队列依旧存在）&lt;/li>
+&lt;li>Exclusive（只被一个连接（connection）使用，而且当连接关闭后队列即被删除）&lt;/li>
+&lt;li>Auto-delete（当最后一个消费者退订后即被删除）&lt;/li>
+&lt;li>Arguments（一些消息代理用他来完成类似与TTL的某些额外功能）&lt;/li>
+&lt;/ul>
+&lt;p>队列在声明（declare）后才能被使用。如果一个队列尚不存在，声明一个队列会创建它。如果声明的队列已经存在，并且属性完全相同，那么此次声明不会对原有队列产生任何影响。如果声明中的属性与已存在队列的属性有差异，那么一个错误代码为406的通道级异常就会被抛出。&lt;/p>
+&lt;h3 id="队列名称">
+&lt;a href="#%e9%98%9f%e5%88%97%e5%90%8d%e7%a7%b0">#&lt;/a>
+队列名称
+&lt;/h3>&lt;p>队列的名字可以由应用（application）来取，也可以让消息代理（broker）直接生成一个。队列的名字可以是最多255字节的一个utf-8字符串。若希望AMQP消息代理生成队列名，需要给队列的name参数赋值一个空字符串：在同一个通道（channel）的后续的方法（method）中，我们可以使用空字符串来表示之前生成的队列名称。之所以之后的方法可以获取正确的队列名是因为通道可以默默地记住消息代理最后一次生成的队列名称。&lt;/p>
+&lt;p>以&amp;quot;amq.&amp;ldquo;开始的队列名称被预留做消息代理内部使用。如果试图在队列声明时打破这一规则的话，一个通道级的403 (ACCESS_REFUSED)错误会被抛出。&lt;/p>
+&lt;h3 id="队列持久化queue-durability">
+&lt;a href="#%e9%98%9f%e5%88%97%e6%8c%81%e4%b9%85%e5%8c%96queue-durability">#&lt;/a>
+队列持久化（Queue Durability）
+&lt;/h3>&lt;p>持久化队列（Durable queues）会被存储在磁盘上，当消息代理（broker）重启的时候，它依旧存在。没有被持久化的队列称作暂存队列（Transient queues）。并不是所有的场景和案例都需要将队列持久化。&lt;/p>
+&lt;p>持久化的队列并不会使得路由到它的消息也具有持久性。倘若消息代理挂掉了，重新启动，那么在重启的过程中持久化队列会被重新声明，无论怎样，只有经过持久化的消息才能被重新恢复。&lt;/p>
+&lt;h2 id="绑定bindings">
+&lt;a href="#%e7%bb%91%e5%ae%9abindings">#&lt;/a>
+绑定（Bindings）
+&lt;/h2>&lt;p>绑定（Binding）是交换机（exchange）将消息（message）路由给队列（queue）所需遵循的规则。如果要指示交换机“E”将消息路由给队列“Q”，那么“Q”就需要与“E”进行绑定。绑定操作需要定义一个可选的路由键（routing key）属性给某些类型的交换机。路由键的意义在于从发送给交换机的众多消息中选择出某些消息，将其路由给绑定的队列。&lt;/p>
+&lt;p>打个比方：&lt;/p>
+&lt;ul>
+&lt;li>队列（queue）是我们想要去的位于纽约的目的地&lt;/li>
+&lt;li>交换机（exchange）是JFK机场&lt;/li>
+&lt;li>绑定（binding）就是JFK机场到目的地的路线。能够到达目的地的路线可以是一条或者多条&lt;/li>
+&lt;/ul>
+&lt;p>拥有了交换机这个中间层，很多由发布者直接到队列难以实现的路由方案能够得以实现，并且避免了应用开发者的许多重复劳动。&lt;/p>
+&lt;p>如果AMQP的消息无法路由到队列（例如，发送到的交换机没有绑定队列），消息会被就地销毁或者返还给发布者。如何处理取决于发布者设置的消息属性。&lt;/p>
+&lt;h2 id="消费者consumers">
+&lt;a href="#%e6%b6%88%e8%b4%b9%e8%80%85consumers">#&lt;/a>
+消费者（Consumers）
+&lt;/h2>&lt;p>消息如果只是存储在队列里是没有任何用处的。被应用消费掉，消息的价值才能够体现。在AMQP 0-9-1 模型中，有两种途径可以达到此目的：&lt;/p>
+&lt;ul>
+&lt;li>将消息投递给应用 (&amp;ldquo;push API&amp;rdquo;)&lt;/li>
+&lt;li>应用根据需要主动获取消息 (&amp;ldquo;pull API&amp;rdquo;)&lt;/li>
+&lt;/ul>
+&lt;p>使用push API，应用（application）需要明确表示出它在某个特定队列里所感兴趣的，想要消费的消息。如是，我们可以说应用注册了一个消费者，或者说订阅了一个队列。一个队列可以注册多个消费者，也可以注册一个独享的消费者（当独享消费者存在时，其他消费者即被排除在外）。&lt;/p>
+&lt;p>每个消费者（订阅者）都有一个叫做消费者标签的标识符。它可以被用来退订消息。消费者标签实际上是一个字符串。&lt;/p>
+&lt;h3 id="消息确认message-acknowledgements">
+&lt;a href="#%e6%b6%88%e6%81%af%e7%a1%ae%e8%ae%a4message-acknowledgements">#&lt;/a>
+消息确认（Message Acknowledgements）
+&lt;/h3>&lt;p>消费者应用（Consumer applications） - 用来接受和处理消息的应用 - 在处理消息的时候偶尔会失败或者有时会直接崩溃掉。而且网络原因也有可能引起各种问题。这就给我们出了个难题，AMQP代理在什么时候删除消息才是正确的？AMQP 0-9-1 规范给我们两种建议：&lt;/p>
+&lt;p>当消息代理（broker）将消息发送给应用后立即删除。（使用AMQP方法：basic.deliver或basic.get-ok）
+待应用（application）发送一个确认回执（acknowledgement）后再删除消息。（使用AMQP方法：basic.ack）
+前者被称作自动确认模式（automatic acknowledgement model），后者被称作显式确认模式（explicit acknowledgement model）。在显式模式下，由消费者应用来选择什么时候发送确认回执（acknowledgement）。应用可以在收到消息后立即发送，或将未处理的消息存储后发送，或等到消息被处理完毕后再发送确认回执（例如，成功获取一个网页内容并将其存储之后）。&lt;/p>
+&lt;p>如果一个消费者在尚未发送确认回执的情况下挂掉了，那AMQP代理会将消息重新投递给另一个消费者。如果当时没有可用的消费者了，消息代理会死等下一个注册到此队列的消费者，然后再次尝试投递。&lt;/p>
+&lt;h3 id="拒绝消息rejecting-messages">
+&lt;a href="#%e6%8b%92%e7%bb%9d%e6%b6%88%e6%81%afrejecting-messages">#&lt;/a>
+拒绝消息（Rejecting Messages）
+&lt;/h3>&lt;p>当一个消费者接收到某条消息后，处理过程有可能成功，有可能失败。应用可以向消息代理表明，本条消息由于“拒绝消息（Rejecting Messages）”的原因处理失败了（或者未能在此时完成）。当拒绝某条消息时，应用可以告诉消息代理如何处理这条消息——销毁它或者重新放入队列。当此队列只有一个消费者时，请确认不要由于拒绝消息并且选择了重新放入队列的行为而引起消息在同一个消费者身上无限循环的情况发生。&lt;/p>
+&lt;h3 id="negative-acknowledgements">
+&lt;a href="#negative-acknowledgements">#&lt;/a>
+Negative Acknowledgements
+&lt;/h3>&lt;p>在AMQP中，basic.reject方法用来执行拒绝消息的操作。但basic.reject有个限制：你不能使用它决绝多个带有确认回执（acknowledgements）的消息。但是如果你使用的是RabbitMQ，那么你可以使用被称作negative acknowledgements（也叫nacks）的AMQP 0-9-1扩展来解决这个问题。更多的信息请参考帮助页面&lt;/p>
+&lt;h3 id="预取消息prefetching-messages">
+&lt;a href="#%e9%a2%84%e5%8f%96%e6%b6%88%e6%81%afprefetching-messages">#&lt;/a>
+预取消息（Prefetching Messages）
+&lt;/h3>&lt;p>在多个消费者共享一个队列的案例中，明确指定在收到下一个确认回执前每个消费者一次可以接受多少条消息是非常有用的。这可以在试图批量发布消息的时候起到简单的负载均衡和提高消息吞吐量的作用。For example, if a producing application sends messages every minute because of the nature of the work it is doing.（？？？例如，如果生产应用每分钟才发送一条消息，这说明处理工作尚在运行。）&lt;/p>
+&lt;p>注意，RabbitMQ只支持通道级的预取计数，而不是连接级的或者基于大小的预取。&lt;/p>
+&lt;h2 id="消息属性和有效载荷message-attributes-and-payload">
+&lt;a href="#%e6%b6%88%e6%81%af%e5%b1%9e%e6%80%a7%e5%92%8c%e6%9c%89%e6%95%88%e8%bd%bd%e8%8d%b7message-attributes-and-payload">#&lt;/a>
+消息属性和有效载荷（Message Attributes and Payload）
+&lt;/h2>&lt;p>AMQP模型中的消息（Message）对象是带有属性（Attributes）的。有些属性及其常见，以至于AMQP 0-9-1 明确的定义了它们，并且应用开发者们无需费心思思考这些属性名字所代表的具体含义。例如：&lt;/p>
+&lt;ul>
+&lt;li>Content type（内容类型）&lt;/li>
+&lt;li>Content encoding（内容编码）&lt;/li>
+&lt;li>Routing key（路由键）&lt;/li>
+&lt;li>Delivery mode (persistent or not) 投递模式（持久化 或 非持久化）&lt;/li>
+&lt;li>Message priority（消息优先权）&lt;/li>
+&lt;li>Message publishing timestamp（消息发布的时间戳）&lt;/li>
+&lt;li>Expiration period（消息有效期）&lt;/li>
+&lt;li>Publisher application id（发布应用的ID）&lt;/li>
+&lt;/ul>
+&lt;p>有些属性是被AMQP代理所使用的，但是大多数是开放给接收它们的应用解释器用的。有些属性是可选的也被称作消息头（headers）。他们跟HTTP协议的X-Headers很相似。消息属性需要在消息被发布的时候定义。&lt;/p>
+&lt;p>AMQP的消息除属性外，也含有一个有效载荷 - Payload（消息实际携带的数据），它被AMQP代理当作不透明的字节数组来对待。消息代理不会检查或者修改有效载荷。消息可以只包含属性而不携带有效载荷。它通常会使用类似JSON这种序列化的格式数据，为了节省，协议缓冲器和MessagePack将结构化数据序列化，以便以消息的有效载荷的形式发布。AMQP及其同行者们通常使用&amp;quot;content-type&amp;rdquo; 和 &amp;ldquo;content-encoding&amp;rdquo; 这两个字段来与消息沟通进行有效载荷的辨识工作，但这仅仅是基于约定而已。&lt;/p>
+&lt;p>消息能够以持久化的方式发布，AMQP代理会将此消息存储在磁盘上。如果服务器重启，系统会确认收到的持久化消息未丢失。简单地将消息发送给一个持久化的交换机或者路由给一个持久化的队列，并不会使得此消息具有持久化性质：它完全取决与消息本身的持久模式（persistence mode）。将消息以持久化方式发布时，会对性能造成一定的影响（就像数据库操作一样，健壮性的存在必定造成一些性能牺牲）。&lt;/p>
+&lt;h2 id="amqp-0-9-1-方法">
+&lt;a href="#amqp-0-9-1-%e6%96%b9%e6%b3%95">#&lt;/a>
+AMQP 0-9-1 方法
+&lt;/h2>&lt;p>AMQP 0-9-1由许多方法（methods）构成。方法即是操作，这跟面向对象编程中的方法没半毛钱关系。AMQP的方法被分组在类（class）中。这里的类仅仅是对AMQP方法的逻辑分组而已。在 AMQP 0-9-1参考 中有对AMQP方法的详细介绍。&lt;/p>
+&lt;p>让我们来看看交换机类，有一组方法被关联到了交换机的操作上。这些方法如下所示：&lt;/p>
+&lt;ul>
+&lt;li>exchange.declare&lt;/li>
+&lt;li>exchange.declare-ok&lt;/li>
+&lt;li>exchange.delete&lt;/li>
+&lt;li>exchange.delete-ok&lt;/li>
+&lt;/ul>
+&lt;p>（请注意，RabbitMQ网站参考中包含了特用于RabbitMQ的交换机类的扩展，这里我们不对其进行讨论）&lt;/p>
+&lt;p>以上的操作来自逻辑上的配对：exchange.declare 和 exchange.declare-ok，exchange.delete 和 exchange.delete-ok. 这些操作分为“请求 - requests”（由客户端发送）和“响应 - responses”（由代理发送，用来回应之前提到的“请求”操作）。&lt;/p>
+&lt;p>如下的例子：客户端要求消息代理使用exchange.declare方法声明一个新的交换机：
+&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-3.png"
+width="551"
+height="155"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-3_hu8db8d483b5200b60f7675a9896d4dd37_44595_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-3_hu8db8d483b5200b60f7675a9896d4dd37_44595_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="exchange.declare"
+class="gallery-image"
+data-flex-grow="355"
+data-flex-basis="853px"
+>&lt;/p>
+&lt;p>如上图所示，exchange.declare方法携带了好几个参数。这些参数可以允许客户端指定交换机名称、类型、是否持久化等等。&lt;/p>
+&lt;p>操作成功后，消息代理使用exchange.declare-ok方法进行回应：
+&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-4.png"
+width="551"
+height="155"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-4_hu9850aaca366c1b50a4cfec803c423b3f_34698_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-4_hu9850aaca366c1b50a4cfec803c423b3f_34698_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="exchange.declare-ok"
+class="gallery-image"
+data-flex-grow="355"
+data-flex-basis="853px"
+>&lt;/p>
+&lt;p>exchange.declare-ok方法除了通道号之外没有携带任何其他参数（通道-channel 会在本指南稍后章节进行介绍）。&lt;/p>
+&lt;p>AMQP队列类的配对方法 - queue.declare方法 和 queue.declare-ok有着与其他配对方法非常相似的一系列事件：
+&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-5.png"
+width="551"
+height="155"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-5_hu0a398e5dfc7528b3c21db62c86d6df1d_39130_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-5_hu0a398e5dfc7528b3c21db62c86d6df1d_39130_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="queue.declare"
+class="gallery-image"
+data-flex-grow="355"
+data-flex-basis="853px"
+>
+&lt;img src="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-6.png"
+width="551"
+height="155"
+srcset="https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-6_hu0d477143c88a9947645dfc18354afce6_48025_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/amqp_0-9-1_model_explained/image-6_hu0d477143c88a9947645dfc18354afce6_48025_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="queue.declare-ok"
+class="gallery-image"
+data-flex-grow="355"
+data-flex-basis="853px"
+>&lt;/p>
+&lt;p>不是所有的AMQP方法都有与其配对的“另一半”。许多（basic.publish是最被广泛使用的）都没有相对应的“响应”方法，另外一些（如basic.get）有着一种以上与之对应的“响应”方法。&lt;/p>
+&lt;h2 id="连接connections">
+&lt;a href="#%e8%bf%9e%e6%8e%a5connections">#&lt;/a>
+连接（Connections）
+&lt;/h2>&lt;p>AMQP连接通常是长连接。AMQP是一个使用TCP提供可靠投递的应用层协议。AMQP使用认证机制并且提供TLS（SSL）保护。当一个应用不再需要连接到AMQP代理的时候，需要优雅的释放掉AMQP连接，而不是直接将TCP连接关闭。&lt;/p>
+&lt;h2 id="通道channels">
+&lt;a href="#%e9%80%9a%e9%81%93channels">#&lt;/a>
+通道（Channels）
+&lt;/h2>&lt;p>有些应用需要与AMQP代理建立多个连接。无论怎样，同时开启多个TCP连接都是不合适的，因为这样做会消耗掉过多的系统资源并且使得防火墙的配置更加困难。AMQP 0-9-1提供了通道（channels）来处理多连接，可以把通道理解成共享一个TCP连接的多个轻量化连接。&lt;/p>
+&lt;p>在涉及多线程/进程的应用中，为每个线程/进程开启一个通道（channel）是很常见的，并且这些通道不能被线程/进程共享。&lt;/p>
+&lt;p>一个特定通道上的通讯与其他通道上的通讯是完全隔离的，因此每个AMQP方法都需要携带一个通道号，这样客户端就可以指定此方法是为哪个通道准备的。&lt;/p>
+&lt;h2 id="虚拟主机virtual-hosts">
+&lt;a href="#%e8%99%9a%e6%8b%9f%e4%b8%bb%e6%9c%bavirtual-hosts">#&lt;/a>
+虚拟主机（Virtual Hosts）
+&lt;/h2>&lt;p>为了在一个单独的代理上实现多个隔离的环境（用户、用户组、交换机、队列 等），AMQP提供了一个虚拟主机（virtual hosts - vhosts）的概念。这跟Web servers虚拟主机概念非常相似，这为AMQP实体提供了完全隔离的环境。当连接被建立的时候，AMQP客户端来指定使用哪个虚拟主机。&lt;/p>
+&lt;h2 id="amqp是可扩展的">
+&lt;a href="#amqp%e6%98%af%e5%8f%af%e6%89%a9%e5%b1%95%e7%9a%84">#&lt;/a>
+AMQP是可扩展的
+&lt;/h2>&lt;p>AMQP 0-9-1 拥有多个扩展点：&lt;/p>
+&lt;ul>
+&lt;li>定制化交换机类型 可以让开发者们实现一些开箱即用的交换机类型尚未很好覆盖的路由方案。例如 geodata-based routing。&lt;/li>
+&lt;li>交换机和队列的声明中可以包含一些消息代理能够用到的额外属性。例如RabbitMQ中的per-queue message TTL即是使用该方式实现。&lt;/li>
+&lt;li>特定消息代理的协议扩展。例如RabbitMQ所实现的扩展。&lt;/li>
+&lt;li>新的 AMQP 0-9-1 方法类可被引入。&lt;/li>
+&lt;li>消息代理可以被其他的插件扩展，例如RabbitMQ的管理前端 和 已经被插件化的HTTP API。&lt;/li>
+&lt;/ul>
+&lt;p>这些特性使得AMQP 0-9-1模型更加灵活，并且能够适用于解决更加宽泛的问题。&lt;/p>
+&lt;h2 id="amqp-0-9-1-客户端生态系统">
+&lt;a href="#amqp-0-9-1-%e5%ae%a2%e6%88%b7%e7%ab%af%e7%94%9f%e6%80%81%e7%b3%bb%e7%bb%9f">#&lt;/a>
+AMQP 0-9-1 客户端生态系统
+&lt;/h2>&lt;p>AMQP 0-9-1 拥有众多的适用于各种流行语言和框架的客户端。其中一部分严格遵循AMQP规范，提供AMQP方法的实现。另一部分提供了额外的技术，方便使用的方法和抽象。有些客户端是异步的（非阻塞的），有些是同步的（阻塞的），有些将这两者同时实现。有些客户端支持“供应商的特定扩展”（例如RabbitMQ的特定扩展）。&lt;/p>
+&lt;p>因为AMQP的主要目标之一就是实现交互性，所以对于开发者来讲，了解协议的操作方法而不是只停留在弄懂特定客户端的库就显得十分重要。这样一来，开发者使用不同类型的库与协议进行沟通时就会容易的多。&lt;/p>
+&lt;h2 id="参考资料">
+&lt;a href="#%e5%8f%82%e8%80%83%e8%b5%84%e6%96%99">#&lt;/a>
+参考资料
+&lt;/h2>&lt;ul>
+&lt;li>&lt;a class="link" href="https://www.rabbitmq.com/tutorials/amqp-concepts#amqp-methods" target="_blank" rel="noopener"
+>https://www.rabbitmq.com/tutorials/amqp-concepts#amqp-methods&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>探秘 分布式一致性（共识）算法 ：Raft</title><link>https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/</link><pubDate>Mon, 25 Mar 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/</guid><description>&lt;img src="https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/cover.jpg" alt="Featured image of post 探秘 分布式一致性（共识）算法 ：Raft" />&lt;h2 id="前言">
+&lt;a href="#%e5%89%8d%e8%a8%80">#&lt;/a>
+前言
+&lt;/h2>&lt;p>Raft 算法是 Multi-Paxos 算法的一种，是一种强一致性算法。核心就是通过日志复制的方式达到整个集群的副本一致。&lt;/p>
+&lt;p>Raft 算法的三个核心概念就是 Leader 的选举、日志复制、节点变更。本文也将从这三个方面进行探讨。之后再聊聊 Raft 算法的几个应用场景。&lt;/p>
+&lt;h2 id="原理">
+&lt;a href="#%e5%8e%9f%e7%90%86">#&lt;/a>
+原理
+&lt;/h2>&lt;p>下面，我们就看看 Raft 算法的一些细节和流程。&lt;/p>
+&lt;h3 id="leader-选举">
+&lt;a href="#leader-%e9%80%89%e4%b8%be">#&lt;/a>
+Leader 选举
+&lt;/h3>&lt;p>Raft 算法中实现一致性的方法很简单：一切听领导的。分布式的环境下节点众多，达成一致最简单粗暴的方法不就是听一个节点的么。&lt;/p>
+&lt;h4 id="角色变换">
+&lt;a href="#%e8%a7%92%e8%89%b2%e5%8f%98%e6%8d%a2">#&lt;/a>
+角色变换
+&lt;/h4>&lt;p>Raft 算法中的每个节点都在三种角色之间变换着（一个时间点中一个节点只有一种角色）：Leader（领导者）、Candidate（候选者）、Follower（追随者）。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>领导者&lt;/strong>，整个集群的核心，其他的节点都追随这个领导者来复制日志内容。领导者主要负责客户端的写请求的处理、发送心跳（告诉其他节点我还活着，没有异常，请不要随便发起选举）、整理日志。&lt;/li>
+&lt;li>&lt;strong>候选者&lt;/strong>，当领导者节点出现异常（比如长时间没有收到领导者的心跳消息），这时候集群中的其他节点就会把自己的节点角色转为候选者，然后拉选票。最终根据选票数量决定是否成为领导者。&lt;/li>
+&lt;li>&lt;strong>追随者&lt;/strong>，领导者的小迷弟，永远追随着领导者（也有可能变成候选者或者领导者），主要负责从领导者那里复制日志。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/image.png"
+width="900"
+height="310"
+srcset="https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/image_hu2d375501564175190ec33b8bcacaa6c7_19912_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-distributed-consistency-algorithm-raft/image_hu2d375501564175190ec33b8bcacaa6c7_19912_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="角色示意图"
+class="gallery-image"
+data-flex-grow="290"
+data-flex-basis="696px"
+>&lt;/p>
+&lt;p>在了解选举过程之前，先介绍几个概念：任期编号、随机超时时间&lt;/p>
+&lt;h4 id="任期编号">
+&lt;a href="#%e4%bb%bb%e6%9c%9f%e7%bc%96%e5%8f%b7">#&lt;/a>
+任期编号
+&lt;/h4>&lt;p>所谓的任期编号就是一个数字而已，每个领导者在任期期间都有一个编号，所有的追随者都以这个编号为准。这个任期在整个选举的过程中起到了至关重要的作用：&lt;/p>
+&lt;ul>
+&lt;li>当某个节点长时间没收到领导者的消息，会把自己的任期+1，并且变成候选者&lt;/li>
+&lt;li>如果某个节点发现自己的任期编号比其他节点的小，那么会将自己的任期编号提高到编号大的那个值&lt;/li>
+&lt;li>如果某个节点发现自己的任期编号比其他节点的大，会丢弃这条消息&lt;/li>
+&lt;/ul>
+&lt;h4 id="随机超时时间">
+&lt;a href="#%e9%9a%8f%e6%9c%ba%e8%b6%85%e6%97%b6%e6%97%b6%e9%97%b4">#&lt;/a>
+随机超时时间
+&lt;/h4>&lt;p>追随者有个特点：当长时间收不到领导者的消息就变成候选者然后去拉选票。那么这个长时间指的是多长时间？Raft 算法里的这个长时间是随机的一个时间，每个节点都不同且随机。&lt;/p>
+&lt;p>为什么超时时间是随机的呢？如果每个节点超时时间相同，那么有可能同时发起选票，那就有可能选不出最终的领导者，导致算法无法进行。&lt;/p>
+&lt;h4 id="选举过程">
+&lt;a href="#%e9%80%89%e4%b8%be%e8%bf%87%e7%a8%8b">#&lt;/a>
+选举过程
+&lt;/h4>&lt;p>现在描述下 Raft 算法里的选举过程，假设集群里有三个节点：A、B、C&lt;/p>
+&lt;ul>
+&lt;li>首先，起始状态下，集群中所有的节点都是追随者，但是 A 节点的超时时间（与领导者断联系的时间）短，所以A节点先别人一步，把自己变成候选者&lt;/li>
+&lt;li>A 成为候选者后，把任期编号+1，然后投自己一票。接着再发消息给B、C 用来拉选票&lt;/li>
+&lt;li>B、C 收到来自 A 的拉选票的消息后，检查下自己在 A 的任期编号下是否投票过、检查下这个任期编号是否合适，如果都满足条件，就把票投给- A，然后把自己的任期编号更新为 A 发过来的任期编号。&lt;/li>
+&lt;li>当 A 收到来自节点其他大多数节点的选票后，A 就会成为领导者。处理客户端的写请求、发心跳消息给追随者（防止追随者选举成为领导者）&lt;/li>
+&lt;/ul>
+&lt;p>选举的过程有几点注意：&lt;/p>
+&lt;ul>
+&lt;li>一个任期内，除非这个领导者自己出现网络延迟等异常，否则会一直领导下去&lt;/li>
+&lt;li>如果追随者收到多个节点的拉选票的消息，采取先到先得的方式&lt;/li>
+&lt;/ul>
+&lt;blockquote>
+&lt;p>除了以上的精简过程描述，raft 社区还提供了完整共识过程的可视化展示，这里可以通过&lt;a class="link" href="http://thesecretlivesofdata.com/raft/" target="_blank" rel="noopener"
+>原理动画&lt;/a>展示选举过程。 &lt;a class="link" href="http://thesecretlivesofdata.com/raft/" target="_blank" rel="noopener"
+>http://thesecretlivesofdata.com/raft/&lt;/a>&lt;/p>
+&lt;/blockquote>
+&lt;h3 id="日志复制">
+&lt;a href="#%e6%97%a5%e5%bf%97%e5%a4%8d%e5%88%b6">#&lt;/a>
+日志复制
+&lt;/h3>&lt;p>Raft 算法选举出领导者之后就能对外提供服务了。领导者接受客户端的写请求，然后记录日志、把日志更新给其他节点，最终整个集群达成一致。&lt;/p>
+&lt;p>这里的日志跟 MySQL 底层的那些个实现事物的各种 log 在原理和作用上是类似的。Raft 的日志是由日志项组成，每个日志项包含了一些指令信息、任期编号、索引值等内容。领导者的日志项式最全的（当然啦，因为所有人都听领导者的嘛）且索引值是按照一定的顺序排起来的，这样方便让其他节点查漏补缺。&lt;/p>
+&lt;h4 id="日志复制过程">
+&lt;a href="#%e6%97%a5%e5%bf%97%e5%a4%8d%e5%88%b6%e8%bf%87%e7%a8%8b">#&lt;/a>
+日志复制过程
+&lt;/h4>&lt;p>那来自客户端的写请求是怎么个处理流程呢？大体如下：&lt;/p>
+&lt;ul>
+&lt;li>第一步，领导者先处理写请求，创建新的日志项，写到领导者的本地日志中&lt;/li>
+&lt;li>第二步，领导者发送这条日志项给其他节点&lt;/li>
+&lt;li>第三步，当领导者收到大多数节点的回复（比如，其他节点说我已经收到新的日志项了），领导者将自己的状态机（可以理解为最终达成一致的那个状态数据库）更新一下，更新成把新的日志项加入后的最新状态。&lt;/li>
+&lt;li>第四步，领导者返还给客户端：你的写请求已经成功被我方执行，请放心。&lt;/li>
+&lt;li>第五步，领导者发在后续的心跳中告诉其他节点：你们可以更新自己的状态机为我现在的状态机的状态了。&lt;/li>
+&lt;/ul>
+&lt;p>非常类似两阶段提交方式的分布式事务……只不过做了点优化&lt;/p>
+&lt;h4 id="一致性的保障">
+&lt;a href="#%e4%b8%80%e8%87%b4%e6%80%a7%e7%9a%84%e4%bf%9d%e9%9a%9c">#&lt;/a>
+一致性的保障
+&lt;/h4>&lt;p>上面的流程是正常的情况，如果发生非正常的情况，Raft 怎么保证其一致性？其实也挺简单粗暴：强制让追随者的日志项都与领导者一致，并且领导者的日志项永远不会被覆盖或者删除。具体怎么强制让追随者与领导者一致的呢？也很简单：发消息。&lt;/p>
+&lt;ul>
+&lt;li>领导者有了最新的日志项，不是要发消息给追随者吗？这条消息里包含了领导者的前一条日志项的一些信息。&lt;/li>
+&lt;li>追随者收到消息后，检查下这条消息中的前一条日志项的信息是否与自己最新的日志项一致，如果一致，就追加这条最新的日志项到末尾。如果发现不一致，发送失败的消息给领导者。&lt;/li>
+&lt;li>领导者收到来自追随者失败的消息后，将前一条日志项打包成消息，这条消息包含了前前条日志项的信息。&lt;/li>
+&lt;li>追随者再次检查消息，跟第二步的检查机制一样，循环往复，直到找到与领导者相同的那条日志项为止。&lt;/li>
+&lt;/ul>
+&lt;p>总结下就是：领导者不停的通过消息与追随者确认两者之间最后一次一致的日志项在哪里，找到这条相同的日志项后，追随者直接强制把与领导者不同的日志项覆盖成领导者的日志项。当然，如果追随者落后的较多，这么一步步的往回走是很低效的，这种情况下领导者可以阶段性发送 snapshots，一次性把落后的节点的日志迅速的追回到某个 snapshots。&lt;/p>
+&lt;h3 id="节点变更">
+&lt;a href="#%e8%8a%82%e7%82%b9%e5%8f%98%e6%9b%b4">#&lt;/a>
+节点变更
+&lt;/h3>&lt;p>这里我们继续探讨 Raft 算法中如何保持节点变更后领导者的一致性。领导者网络异常等可以从其他追随者重新选举来保持集群稳定。那如果集群中加入一个或者多个节点后，是否会导致集群不一致呢？如果操作不当，是会的。&lt;/p>
+&lt;p>想象这种情况，A、B、C三个节点，A 是领导者，B、C 是追随者，但是 C 是日志项的异常节点。如果这时候突然加了两台机器：D、E，好巧不巧的是 C、D、E 成为了一个新的小集群，然后 C 成为了领导，那就麻烦了。&lt;/p>
+&lt;p>如何解决上述的麻烦？也很简单粗暴：加机器的时候一台一台的加就行了。同样的，如果缩减机器也是一台一台的减少。&lt;/p>
+&lt;h2 id="关于-raft-的思考">
+&lt;a href="#%e5%85%b3%e4%ba%8e-raft-%e7%9a%84%e6%80%9d%e8%80%83">#&lt;/a>
+关于 Raft 的思考
+&lt;/h2>&lt;p>任何算法、技术都在解决问题的同时带来了其他的问题。Raft 也一样，这里笔者总结下其弊端。&lt;/p>
+&lt;ul>
+&lt;li>Raft 算法依赖于一个领导者（Leader）节点来协调集群中的其他节点。这意味着领导者节点可能会成为一个性能瓶颈，特别是在处理大量读写请求的情况下。为了解决这个问题，可以采用一些优化策略，如领导者复制和负载均衡。&lt;/li>
+&lt;li>Raft 算法依赖于集群中大多数节点的响应来达成一致。当集群规模增加时，需要更多的节点来达成一致，这可能导致更高的通信成本和更长的延迟。因此，Raft 算法在大规模分布式系统中的扩展性可能受到限制。&lt;/li>
+&lt;li>在某些情况下，Raft 算法可能需要几个网络往返才能达到一致性。这会导致一定程度的一致性延迟。对于对实时性要求较高的应用，这种延迟可能会成为一个问题。&lt;/li>
+&lt;/ul>
+&lt;h2 id="参考文献">
+&lt;a href="#%e5%8f%82%e8%80%83%e6%96%87%e7%8c%ae">#&lt;/a>
+参考文献
+&lt;/h2>&lt;p>&lt;a class="link" href="https://raft.github.io/raft.pdf" target="_blank" rel="noopener"
+>In Search of an Understandable Consensus Algorithm&lt;/a>
+&lt;a class="link" href="https://www.scylladb.com/glossary/raft-consensus-algorithm/" target="_blank" rel="noopener"
+>Raft Consensus Algorithm Definition&lt;/a>&lt;/p></description></item><item><title>探秘 Gossip 协议：从节点交流到信息扩散</title><link>https://xiuwei.github.io/p/exploring-the-gossip-protocol/</link><pubDate>Fri, 15 Mar 2024 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/exploring-the-gossip-protocol/</guid><description>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/cover.jpg" alt="Featured image of post 探秘 Gossip 协议：从节点交流到信息扩散" />&lt;h2 id="引言">
+&lt;a href="#%e5%bc%95%e8%a8%80">#&lt;/a>
+引言
+&lt;/h2>&lt;p>在分布式系统中，节点之间的信息传播是至关重要的。Gossip 协议作为一种简单而有效的分布式信息传播协议，被广泛应用于各种分布式系统中。本文将带领读者从零开始，通过具体的场景和例子，深入探讨 Gossip 协议的工作原理和应用场景。&lt;/p>
+&lt;h3 id="基本概念">
+&lt;a href="#%e5%9f%ba%e6%9c%ac%e6%a6%82%e5%bf%b5">#&lt;/a>
+基本概念
+&lt;/h3>&lt;p>Gossip，单词本身就是流言、八卦的意思。正如名字一样，Gossip 协议也被称为“流言协议”。它是一种分布式算法，用于在节点之间传递信息。在 Gossip 协议中，每个节点都可以将信息广播给它所知道的其他节点，这些节点又将该信息广播给它们所知道的其他节点，以此类推，直到整个网络都知道了这个信息。这种广播方式可以保证整个网络中的所有节点都能够及时地了解到最新的信息，并确保整个网络的一致性。&lt;/p>
+&lt;h3 id="背景与意义">
+&lt;a href="#%e8%83%8c%e6%99%af%e4%b8%8e%e6%84%8f%e4%b9%89">#&lt;/a>
+背景与意义
+&lt;/h3>&lt;p>关于这个协议的详细论文可查看参考文献一。Gossip 协议通常用于分布式系统中，例如 P2P 网络、分布式数据库、分布式文件系统等。在比特币网络中，也使用了 Gossip 协议来广播新的交易和块。Cassandra 使用的数据复制协议也是 Gossip 算法。还有 Akka、Redis Cluster 都有用到。&lt;/p>
+&lt;p>这个算法的最终目的还是一个：达到集群中所有节点的数据一致。只不过这是最终一致性。&lt;/p>
+&lt;h2 id="gossip-协议的基本原理">
+&lt;a href="#gossip-%e5%8d%8f%e8%ae%ae%e7%9a%84%e5%9f%ba%e6%9c%ac%e5%8e%9f%e7%90%86">#&lt;/a>
+Gossip 协议的基本原理
+&lt;/h2>&lt;p>这个协议看似简单，实则很复杂。一个一传十、十传百的工作方式真正在分布式的环境下应用起来不是那么容易的。下面我们探讨下其实现细节。&lt;/p>
+&lt;p>理解这个协议可以从三个维度：通信方式、协调机制、传播过程。&lt;/p>
+&lt;h3 id="通信方式">
+&lt;a href="#%e9%80%9a%e4%bf%a1%e6%96%b9%e5%bc%8f">#&lt;/a>
+通信方式
+&lt;/h3>&lt;p>这里所谓的通信方式就是集群中的节点如何建立通信。协议里支持三种：pull、push、push-pull。&lt;/p>
+&lt;h4 id="push-模式">
+&lt;a href="#push-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+push 模式
+&lt;/h4>&lt;p>节点 A 将数据 (key,value,version) 及对应的版本号推送给 B 节点，B 节点更新A中比自己新的数据&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1.png"
+width="762"
+height="150"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1_hu80bdea9f2e17428598a82c2794d3271a_80914_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-1_hu80bdea9f2e17428598a82c2794d3271a_80914_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+class="gallery-image"
+data-flex-grow="508"
+data-flex-basis="1219px"
+>&lt;/p>
+&lt;p>在推模式中，当一个节点（源节点）需要传播信息时，它会在每个 Gossip 周期（把两个节点数据同步一次定义算作是一个周期）主动将自己的本地数据发送给随机选择的目标节点。目标节点收到信息后，将根据接收到的数据更新自己的本地数据存储。&lt;/p>
+&lt;p>推模式的优势在于，信息能够迅速传播到其他节点。但是，它也可能导致节点之间的通信开销较大，因为每个节点在每个周期内都会主动发送信息，即使目标节点可能已经拥有了这些信息。&lt;/p>
+&lt;h4 id="pull-模式">
+&lt;a href="#pull-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+pull 模式
+&lt;/h4>&lt;p>节点 A 仅将数据 key, version 推送给 B ，注意没有value哦， A 推送给 B 时，B 将本地比 A 新的数据（Key, value, version）推送给 A，A 更新本地，这一步相当于A在主动拉取 B 的值。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2.png"
+width="1121"
+height="364"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2_hu5b5e2d1aa69610bbea27985c83334705_157433_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-2_hu5b5e2d1aa69610bbea27985c83334705_157433_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="307"
+data-flex-basis="739px"
+>&lt;/p>
+&lt;p>在拉模式中，节点不会主动发送信息。相反，它们会在每个 Gossip 周期主动向随机选择的目标节点请求数据。目标节点收到请求后，将自己的本地数据发送给请求节点。请求节点收到数据后，将根据接收到的数据更新自己的本地数据存储。&lt;/p>
+&lt;p>拉模式的优势在于，通信开销相对较小，因为节点只在需要时才会请求数据。然而，拉模式可能导致信息传播速度较慢，尤其是在节点数量较多的情况下。&lt;/p>
+&lt;h4 id="push-pull-模式">
+&lt;a href="#push-pull-%e6%a8%a1%e5%bc%8f">#&lt;/a>
+push-pull 模式
+&lt;/h4>&lt;p>与 Pull 类似，只是多了一步，A 再将本地比B新的数据推送给 B，B 再更新本地。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3.png"
+width="727"
+height="240"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3_hubef17dfc6ca53ea1343e17d70fc95962_102397_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-3_hubef17dfc6ca53ea1343e17d70fc95962_102397_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="alt text"
+class="gallery-image"
+data-flex-grow="302"
+data-flex-basis="727px"
+>&lt;/p>
+&lt;p>推拉模式结合了推模式和拉模式的优势，既能保证信息的快速传播，又能减小通信开销。在推拉模式中，当一个节点（源节点）需要传播信息时，它会在每个Gossip周期主动将自己的本地数据发送给随机选择的目标节点（推），同时也向目标节点请求数据（拉）。目标节点收到信息后，将根据接收到的数据更新自己的本地数据存储，并将自己的数据发送回源节点。&lt;/p>
+&lt;p>推拉模式的优势在于，它可以在保证信息传播速度的同时，降低通信开销。这种模式在大规模分布式系统中尤为突出。&lt;/p>
+&lt;h3 id="传播策略">
+&lt;a href="#%e4%bc%a0%e6%92%ad%e7%ad%96%e7%95%a5">#&lt;/a>
+传播策略
+&lt;/h3>&lt;p>了解完通信方式，再来聊聊传播策略，也就是所谓的如何实现最终的一致性。主要有两种：Anti-Entropy(反熵传播)和Rumor-Mongering(谣言传播)。&lt;/p>
+&lt;h4 id="anti-entropy反熵传播">
+&lt;a href="#anti-entropy%e5%8f%8d%e7%86%b5%e4%bc%a0%e6%92%ad">#&lt;/a>
+Anti-Entropy(反熵传播)
+&lt;/h4>&lt;p>Anti-Entropy 策略通过在节点之间交换数据的摘要来实现信息传播。在每个Gossip 周期内，节点会向随机选择的目标节点发送其本地数据的摘要。目标节点收到摘要后，会比较自己的本地数据和收到的摘要，找出不一致之处。然后，目标节点会向源节点请求缺失或过时的数据。通过这种方式，节点之间的数据最终将达到一致。Anti-Entropy 策略在通信开销和传播速度之间实现了一种平衡，适用于大规模分布式系统。&lt;/p>
+&lt;p>这种方式工作量大，一般用于新节点加入时同步更新数据的时候用得到。&lt;/p>
+&lt;ul>
+&lt;li>适用场景：执行反熵时，相关的节点都是已知的，而且节点数量不能太多，如果是一个动态变化或节点数比较多的分布式环境（比如在 DevOps 环境中检测节点故障，并动态维护集群节点状态），这时反熵就不适用了。&lt;/li>
+&lt;li>缺点：消息数量非常庞大，且无限制；通常只用于新加入节点的数据初始化。可以通过引入校验和（Checksum）等机制，降低需要对比的数据量和通讯消息等。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4.png"
+width="1098"
+height="382"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4_hu7d2b9098776a99c46c1d076f40d1026c_197930_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-4_hu7d2b9098776a99c46c1d076f40d1026c_197930_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="Anti-Entropy(反熵传播)"
+class="gallery-image"
+data-flex-grow="287"
+data-flex-basis="689px"
+>&lt;/p>
+&lt;h4 id="rumor-mongering谣言传播">
+&lt;a href="#rumor-mongering%e8%b0%a3%e8%a8%80%e4%bc%a0%e6%92%ad">#&lt;/a>
+Rumor-Mongering(谣言传播)
+&lt;/h4>&lt;p>Rumor Mongering策略又称为传闻传播策略，它是一种概率论驱动的信息传播方法。在这种策略中，每个节点会在每个Gossip周期内随机选择一个或多个目标节点，并将信息发送给这些目标节点。当目标节点收到信息后，它们也会继续随机选择其他节点并将信息传播出去。这个过程会持续进行，直到信息在整个系统中被广泛传播。Rumor Mongering策略的优点是具有较低的通信开销和较高的可扩展性，但传播速度可能较慢。&lt;/p>
+&lt;p>这种方式工作量小，一般用于节点间数据增量的同步。&lt;/p>
+&lt;ul>
+&lt;li>适用场景：适合动态变化的分布式系统。&lt;/li>
+&lt;li>缺点：系统有一定的概率会不一致，通常用于节点间数据增量同步。&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5.png"
+width="1098"
+height="703"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5_hu31ff4c4a99d3e5ad093a6f2ec21f663c_136383_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image-5_hu31ff4c4a99d3e5ad093a6f2ec21f663c_136383_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="Rumor-Mongering(谣言传播)"
+class="gallery-image"
+data-flex-grow="156"
+data-flex-basis="374px"
+>&lt;/p>
+&lt;h3 id="工作过程">
+&lt;a href="#%e5%b7%a5%e4%bd%9c%e8%bf%87%e7%a8%8b">#&lt;/a>
+工作过程
+&lt;/h3>&lt;p>Gossip 协议的工作流程可以简化描述为几个过程：&lt;/p>
+&lt;ul>
+&lt;li>种子节点在 Gossip 周期内散播消息&lt;/li>
+&lt;li>被感染节点随机选择N个邻接节点散播消息&lt;/li>
+&lt;li>每次散播消息都选择尚未发送过的节点进行散播&lt;/li>
+&lt;/ul>
+&lt;p>这个协议是建立在一定概率的情况下进行的，因为并不是所有节点都时时的能拿到数据，所以这个协议是一种最终一致性算法。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image.png"
+width="640"
+height="413"
+srcset="https://xiuwei.github.io/p/exploring-the-gossip-protocol/image_hu5615acc8d4e95475c63c0632749b833a_190720_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-the-gossip-protocol/image_hu5615acc8d4e95475c63c0632749b833a_190720_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="协议简易动画，来源于网络（详见参考文献二）"
+class="gallery-image"
+data-flex-grow="154"
+data-flex-basis="371px"
+>&lt;/p>
+&lt;h2 id="协议的应用于实践">
+&lt;a href="#%e5%8d%8f%e8%ae%ae%e7%9a%84%e5%ba%94%e7%94%a8%e4%ba%8e%e5%ae%9e%e8%b7%b5">#&lt;/a>
+协议的应用于实践
+&lt;/h2>&lt;h3 id="apache-cassandra">
+&lt;a href="#apache-cassandra">#&lt;/a>
+Apache Cassandra
+&lt;/h3>&lt;p>Apache Cassandra是一种高度可扩展的、分布式的NoSQL数据库，它在很大程度上受到了Amazon Dynamo的启发。Cassandra中使用Gossip协议来实现节点间的成员关系管理、故障检测、元数据信息传播以及负载均衡。&lt;/p>
+&lt;h4 id="成员关系管理和故障检测">
+&lt;a href="#%e6%88%90%e5%91%98%e5%85%b3%e7%b3%bb%e7%ae%a1%e7%90%86%e5%92%8c%e6%95%85%e9%9a%9c%e6%a3%80%e6%b5%8b">#&lt;/a>
+成员关系管理和故障检测
+&lt;/h4>&lt;p>在Cassandra中，节点通过Gossip协议来维护成员关系信息。在每个Gossip周期，节点会与随机选择的其他节点交换成员关系信息。这样，节点可以了解其他节点的在线状态和故障情况。此外，Cassandra使用了一种名为Phi Accrual Failure Detector的故障检测机制，它依赖于Gossip协议收集的节点信息来检测节点的可用性。&lt;/p>
+&lt;h4 id="元数据信息传播">
+&lt;a href="#%e5%85%83%e6%95%b0%e6%8d%ae%e4%bf%a1%e6%81%af%e4%bc%a0%e6%92%ad">#&lt;/a>
+元数据信息传播
+&lt;/h4>&lt;p>Cassandra中的节点需要维护一定量的元数据，例如分区信息、副本信息和令牌（Token）分配。Gossip协议被用于在节点之间传播这些元数据。在每个Gossip周期内，节点会将自己的元数据发送给随机选择的其他节点。这些节点在收到元数据后，会更新自己的本地数据存储，并将更新后的元数据传播给其他节点。这个过程会持续进行，直到元数据在整个系统中被广泛传播。&lt;/p>
+&lt;h3 id="redis-cluster">
+&lt;a href="#redis-cluster">#&lt;/a>
+Redis Cluster
+&lt;/h3>&lt;p>Gossip 协议被广泛应用于各种分布式系统中，下面我们将介绍在Redis Cluster的应用场景，并将 Gossip 协议与真实场景结合起来。&lt;/p>
+&lt;p>Redis Cluster 是一个分布式的 Redis 解决方案，它允许将数据分布在多个节点上以提高性能和可用性。Gossip 协议用于节点之间的发现和状态同步，每个节点都了解整个集群的拓扑结构以及其他节点的状态信息，以便正确地路由请求和保证数据的一致性。&lt;/p>
+&lt;p>想象一下一个大型的工厂，里面有各种各样的生产线。每条生产线都有一个负责人，他们会定期与周围的生产线负责人交流，分享自己所在生产线的状态和工作情况。这样，即使有一部分生产线出现了问题，其他生产线也能够通过周围生产线的信息了解到整个工厂的状态。&lt;/p>
+&lt;p>Gossip 协议在 Redis Cluster 中的应用主要分为两个方面：&lt;/p>
+&lt;h4 id="节点发现">
+&lt;a href="#%e8%8a%82%e7%82%b9%e5%8f%91%e7%8e%b0">#&lt;/a>
+节点发现
+&lt;/h4>&lt;p>当一个新的节点加入到 Redis Cluster 中时，它需要能够自动地发现其他节点，并加入到集群中。这就需要一种机制来实现节点之间的自动发现，而 Gossip 协议恰好提供了这样的功能。每个节点会周期性地与其他节点交换信息，包括自己的地址和状态，从而使新加入的节点能够了解到整个集群的拓扑结构，并与其他节点建立连接。&lt;/p>
+&lt;h4 id="状态同步">
+&lt;a href="#%e7%8a%b6%e6%80%81%e5%90%8c%e6%ad%a5">#&lt;/a>
+状态同步
+&lt;/h4>&lt;p>在 Redis Cluster 中，节点之间需要保持数据的一致性，即使某个节点发生了故障或者新的节点加入。为了实现这一点，每个节点都需要了解其他节点的状态信息，如节点的存活状态、负载情况等。通过 Gossip 协议，每个节点可以定期地交换状态信息，从而保持集群中所有节点的状态同步，并及时地做出相应的调整和处理。&lt;/p>
+&lt;p>总的来说，Redis Cluster 中的 Gossip 协议通过节点之间的周期性交流信息，实现了节点的发现和状态同步，从而保证了集群的高可用性和一致性。&lt;/p>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93">#&lt;/a>
+总结
+&lt;/h2>&lt;p>文中介绍了 Gossip 协议的一些情况。这里简单总结下其优缺点：&lt;/p>
+&lt;h3 id="优势">
+&lt;a href="#%e4%bc%98%e5%8a%bf">#&lt;/a>
+优势
+&lt;/h3>&lt;ul>
+&lt;li>快速传播：由于Gossip协议基于随机节点选择进行信息交换，信息可以在很短的时间内传播到大部分节点，实现快速信息传播。&lt;/li>
+&lt;li>容错性：Gossip协议具有较高的容错性，即使某个节点发生故障或者无法与其他节点通信，信息仍然可以通过其他路径传播。&lt;/li>
+&lt;li>抗拥塞：随机选择目标节点有助于避免在特定节点上产生通信瓶颈。这使得Gossip协议可以在大规模分布式系统中高效运行。&lt;/li>
+&lt;li>可扩展性：Gossip协议的设计使得它可以很容易地适应大规模分布式系统，具有较好的可扩展性。&lt;/li>
+&lt;li>简单易实现：Gossip协议的设计和实现相对简单，易于在各种分布式系统中进行部署。&lt;/li>
+&lt;/ul>
+&lt;h3 id="劣势">
+&lt;a href="#%e5%8a%a3%e5%8a%bf">#&lt;/a>
+劣势
+&lt;/h3>&lt;ul>
+&lt;li>最终一致性：Gossip协议通常实现的是最终一致性，而不是强一致性。在某些应用场景中，这可能导致数据在短时间内不一致。&lt;/li>
+&lt;li>带宽消耗：由于Gossip协议的信息交换是基于概率的，可能会导致部分信息多次在节点之间传播，增加了网络带宽消耗。&lt;/li>
+&lt;li>信息冗余：Gossip协议可能会导致信息冗余，因为每个节点都需要存储关于其他节点的部分信息。&lt;/li>
+&lt;li>难以保证完全一致性：在某些情况下，由于网络延迟、故障等因素，Gossip协议可能难以保证系统中所有节点的完全一致性。&lt;/li>
+&lt;li>参数调优：Gossip协议的性能在很大程度上取决于参数设置，例如Gossip周期、目标节点数量等。在实际应用中，需要根据系统的特点和需求进行参数调优，以获得最佳性能。&lt;/li>
+&lt;/ul>
+&lt;h2 id="参考文献">
+&lt;a href="#%e5%8f%82%e8%80%83%e6%96%87%e7%8c%ae">#&lt;/a>
+参考文献
+&lt;/h2>&lt;p>&lt;a class="link" href="https://www.cs.cornell.edu/home/rvr/papers/flowgossip.pdf" target="_blank" rel="noopener"
+>Efficient Reconciliation and Flow Control for Anti-Entropy Protocols&lt;/a>
+&lt;a class="link" href="https://pstree.cc/wtf-is-gossip/" target="_blank" rel="noopener"
+>Wtf is Gossip Protocols?&lt;/a>
+&lt;a class="link" href="https://zhuanlan.zhihu.com/p/41228196" target="_blank" rel="noopener"
+>P2P 网络核心技术：Gossip 协议&lt;/a>&lt;/p></description></item><item><title>探索分布式锁：实践记录与经验分享</title><link>https://xiuwei.github.io/p/exploring-distributed-locks/</link><pubDate>Thu, 04 Aug 2022 21:00:00 +0000</pubDate><guid>https://xiuwei.github.io/p/exploring-distributed-locks/</guid><description>&lt;img src="https://xiuwei.github.io/p/exploring-distributed-locks/cover.jpg" alt="Featured image of post 探索分布式锁：实践记录与经验分享" />&lt;h2 id="引言">
+&lt;a href="#%e5%bc%95%e8%a8%80">#&lt;/a>
+引言
+&lt;/h2>&lt;p>在分布式系统中，多个节点同时访问共享资源可能导致数据一致性和并发控制的问题。分布式锁作为一种常见的解决方案，在这种情况下发挥着重要作用。&lt;/p>
+&lt;p>分布式锁是一种用于协调分布式系统中多个节点对共享资源的访问的机制。在分布式系统中，我们通常会遇到多个节点同时访问共享资源的情况，而分布式锁可以确保在任何时刻只有一个节点能够获得对共享资源的访问权。&lt;/p>
+&lt;p>&lt;img src="https://xiuwei.github.io/p/exploring-distributed-locks/image.png"
+width="1200"
+height="588"
+srcset="https://xiuwei.github.io/p/exploring-distributed-locks/image_hu9a4e55343920d02dfe91cea8f3bceb08_93151_480x0_resize_box_3.png 480w, https://xiuwei.github.io/p/exploring-distributed-locks/image_hu9a4e55343920d02dfe91cea8f3bceb08_93151_1024x0_resize_box_3.png 1024w"
+loading="lazy"
+alt="分布式锁示意图"
+class="gallery-image"
+data-flex-grow="204"
+data-flex-basis="489px"
+>&lt;/p>
+&lt;h2 id="实现方式">
+&lt;a href="#%e5%ae%9e%e7%8e%b0%e6%96%b9%e5%bc%8f">#&lt;/a>
+实现方式
+&lt;/h2>&lt;p>分布式锁的实现可以基于不同的技术和存储介质，包括基于数据库的实现、基于缓存的实现、基于分布式协调服务（如ZooKeeper）的实现等。每种实现方式都有其特点和适用场景，需要根据具体的业务需求和系统架构选择合适的实现方式。&lt;/p>
+&lt;p>设计分布式锁的时候，一般要遵循这几个要求：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>互斥&lt;/strong> ，有且只有一个进程能拿到锁且解锁的操作只能由加锁的进程执行（A拿到的锁不能让B释放）&lt;/li>
+&lt;li>&lt;strong>超时机制&lt;/strong> ，拿到锁的进程必须在规定时间内解锁（不然其他进程会一直阻塞）&lt;/li>
+&lt;li>&lt;strong>机会平等&lt;/strong> ，保持其他等待进程获取锁的机会是平等的（先到先得等思路）&lt;/li>
+&lt;li>&lt;strong>可重入&lt;/strong> ，同一个进程加的锁可以再次获得或者释放对应的锁&lt;/li>
+&lt;/ul>
+&lt;p>总的来讲，这把锁一定是放在外部存储介质上，根据存储介质的不同，笔者根据自己的实践总结出以下几个方法实现方案：MySQL、Redis、强一致性算法。&lt;/p>
+&lt;h3 id="mysql">
+&lt;a href="#mysql">#&lt;/a>
+MySQL
+&lt;/h3>&lt;p>这种方式主要是用到了表的功能，毕竟 MySQL 的核心就是对表的操作嘛。具体的实现方式：&lt;/p>
+&lt;ul>
+&lt;li>创建一张表，用以存储锁。设置表中的一列为唯一索引来作为排他性&lt;/li>
+&lt;li>获取锁时在数据库中添加一条记录&lt;/li>
+&lt;li>释放锁的时删除添加的那条记录&lt;/li>
+&lt;/ul>
+&lt;p>这是常规的用数据库表来实现分布式锁的步骤，不过很明显有两个严重缺陷：没有超时设置、没有重入。解决超时设置和重入问题也不是不行，代价挺高的。比如：&lt;/p>
+&lt;ul>
+&lt;li>用 select **** for update，来解决超时设置问题&lt;/li>
+&lt;li>用 version 这种乐观锁的方式来解决重入问题&lt;/li>
+&lt;/ul>
+&lt;p>上面的解决方案加重了业务逻辑，况且性能不高（for update 可能会触发表锁等，version 的方式是为每一把锁都建立一张表），还有就是单点故障。所以，这种方案一般不会在生产中使用，这里拿来就是当个比较。&lt;/p>
+&lt;h3 id="redis">
+&lt;a href="#redis">#&lt;/a>
+Redis
+&lt;/h3>&lt;p>既然 MySQL 的 方式有单点故障、性能等问题，那我们可以使用缓存数据库。最典型的就是 Redis 了。具体实现方式如下：&lt;/p>
+&lt;ul>
+&lt;li>用 SETEX key seconds value 命令设置锁（这是个原子命令，seconds 是时间，key 就是锁的名字）&lt;/li>
+&lt;li>释放锁的时候直接 删除 key 的方式（如果删除操作也要确保原子特性的话，可采用 lua 脚本的方式）&lt;/li>
+&lt;/ul>
+&lt;p>这种实现方式有几个缺陷：&lt;/p>
+&lt;ul>
+&lt;li>单点故障。虽然 Redis 有主从方式备份，但是主从方式是异步的。客户端1 在主上加锁成功，但是主挂了。从变成主之后还没来得及同步客户端1 的加锁操作，客户端2 在新的主上又加锁成功。导致两个客户端同时加了锁。&lt;/li>
+&lt;li>超时异常。客户端1 加锁成功，但是阻塞了。超时后客户端2 又拿到锁。这一个锁下有两个进程（一个阻塞、一个正常）可能引发线程安全问题&lt;/li>
+&lt;li>时钟漂移。客户端的时间比 redis 的时间晚了，会导致锁提前释放。&lt;/li>
+&lt;/ul>
+&lt;p>有鉴于此，有了个 RedLock 的方案，大体过程如下：&lt;/p>
+&lt;ul>
+&lt;li>首先，redis 是多点部署的，不存在主从、集群协调之类，就是实实在在的多个 master 的 redis 进程
+客户端获取时间戳。&lt;/li>
+&lt;li>使用同一个key和具有唯一值的value依次从 redis 的服务器上尝试获取锁（假设这里有 5 台 redis）&lt;/li>
+&lt;li>因为连接redis 是需要时间的，所以这个 key 的时间应当减去连接 redis 的耗时&lt;/li>
+&lt;li>当成功获取锁的个数超过 redis 服务器总数的半数以上，即可认为加锁成功（比如5台，获取了3台就算成功）&lt;/li>
+&lt;li>如果因为某些原因获取失败，对所有 redis 服务器进行删除锁的操作（防止加锁成功但获取响应失败）&lt;/li>
+&lt;/ul>
+&lt;p>总的来说，其实就是讲第一种方案做了个分布式的操作作为保障……但，这个也是有隐患的：&lt;/p>
+&lt;ul>
+&lt;li>客户端1 在5 台 redis 服务器上正确获取到了三台（假设 A、B、C、D、E五台，获取到了A、B、C三台），加锁成功，但是C挂了触发了C的主从切换。这与此同时 客户端2 又在 C、D、E 获取锁成功。&lt;/li>
+&lt;li>网络连接的耗时决定了锁的有效时间&lt;/li>
+&lt;/ul>
+&lt;p>所以，任何一种方案都有缺陷和优点，看取舍了。选择了 redis 作为分布式锁，就是看中了其性能好的方面。但是终归不是强一致性的方案。需要在业务层面保障了，比如设置幂等操作等。&lt;/p>
+&lt;h3 id="强一致性算法">
+&lt;a href="#%e5%bc%ba%e4%b8%80%e8%87%b4%e6%80%a7%e7%ae%97%e6%b3%95">#&lt;/a>
+强一致性算法
+&lt;/h3>&lt;p>Redis 的分布式锁方案最根本的隐患总结一句话就是存储锁的这个状态在节点之间（主从之间）并不能达成强一致。自然而然的就能想到基于强一致性算法的实现。这里以 etcd 为例谈谈实践方式。&lt;/p>
+&lt;p>首先 etcd 是一个基于 KEY-VALUE 的分布式一致性的存储系统，主要用来服务发现和共享配置。这里我们利用的就是利用 KEY-VALUE 的建立、获取来实现分布式锁。&lt;/p>
+&lt;ul>
+&lt;li>利用 etcd 的 prefix 机制，让多个抢锁的进程（也就是 etcd 的客户端了）建立前缀相同、名称不同的 key。通过比较每个 key 的 revison 的大小来决定哪个先抢到的锁&lt;/li>
+&lt;li>利用 etcd 的 lease 机制设置 key 的超时时间。当然，这个 key 可以续约&lt;/li>
+&lt;li>利用 etcd 的 watch 机制来监听锁的释放&lt;/li>
+&lt;/ul>
+&lt;p>上述是常规的用 etcd 机制实现分布式锁的方案，其实 etcd 很贴心的为我们提供了一个叫 concurrency 的包来给我们是用，原理上就是对上述的业务逻辑进行了封装，拿来用即可。&lt;/p>
+&lt;h2 id="方案选择">
+&lt;a href="#%e6%96%b9%e6%a1%88%e9%80%89%e6%8b%a9">#&lt;/a>
+方案选择
+&lt;/h2>&lt;p>上述几个方案在不同的业务需求下可以有不同的选择，在选择的时候考虑的无非就是从性能、可用方面去考虑。那我们这里针对几种方案进行对比。&lt;/p>
+&lt;h3 id="权衡利弊">
+&lt;a href="#%e6%9d%83%e8%a1%a1%e5%88%a9%e5%bc%8a">#&lt;/a>
+权衡利弊
+&lt;/h3>&lt;p>针对性能、可用性方面的总结如下：&lt;/p>
+&lt;ul>
+&lt;li>MySQL 方式性能低、可用性差，几乎不作为生产的选择，一般作为分布式锁的入门理解&lt;/li>
+&lt;li>Redis 方式性能高，但有状态不一致的隐患。如果生产上可以配置一些幂等操作的辅助，但代码复杂度就高了&lt;/li>
+&lt;li>强一致性算法方式性能比 Redis 低，但因为基于状态强一致性算法的原因，其可用性高。&lt;/li>
+&lt;/ul>
+&lt;p>所以，追求高性能场景，可以选取 Redis 方式。追求高可用的场景，选取强一致性算法方式。&lt;/p>
+&lt;h3 id="思考">
+&lt;a href="#%e6%80%9d%e8%80%83">#&lt;/a>
+思考
+&lt;/h3>&lt;p>一般情况下，系统的可用性越高，其性能就越低。因为可用性方面我们需要考虑的地方就多了，必然带来一定的复杂度，其性能必然下降。&lt;/p>
+&lt;p>分布式锁作为一个基础组建，个人认为应该更关心的是可用性方面，毕竟都用到锁了，那说明资源的竞态已经是重中之重，能提高可用性就尽量提高。所以，生产上个人倾向于强一致性方面的实现，比如 etcd 或者 zookeeper 方式等。&lt;/p>
+&lt;h2 id="参考资料">
+&lt;a href="#%e5%8f%82%e8%80%83%e8%b5%84%e6%96%99">#&lt;/a>
+参考资料
+&lt;/h2>&lt;p>&lt;a class="link" href="https://redis.io/docs/manual/patterns/distributed-locks/" target="_blank" rel="noopener"
+>Distributed Locks with Redis&lt;/a>
+&lt;a class="link" href="https://github.com/etcd-io/etcd/tree/v3.4.9/clientv3/concurrency" target="_blank" rel="noopener"
+>etcd concurrency&lt;/a>
+&lt;a class="link" href="https://medium.com/@bb8s/design-distributed-lock-with-mysql-9bc28ac59629" target="_blank" rel="noopener"
+>Design distributed lock with MySQL&lt;/a>&lt;/p></description></item></channel></rss>
