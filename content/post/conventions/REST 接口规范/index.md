@@ -2,13 +2,14 @@
 title: REST 接口规范
 description: 在程序员职业生涯中，可能需要频繁的设计 REST 风格的 API 接口。那么如何设计符合规范的 REST API 接口呢？本文就来详细给你介绍下。
 slug: rest-specification
-date: 2022-3-1 19:00:00+0000
+date: 2024-05-05 19:00:00+0000
 image: cover.jpg
 categories:
     - convention
 tags:
     - RESTful
     - API
+    - Golang
 #weight: 1
 ---
 ## RESTful API 介绍
@@ -69,32 +70,35 @@ DELETE /gists/:id/star # github unstar action
 
 基本上 RESTful API 都是使用 HTTP 协议原生的 `GET`、`PUT`、`POST`、`DELETE` 来标识对资源的 CRUD 操作，形成的规范如下表所示：
 
-|HTTP 方法| Collection 资源（**/v1/users**） | Ember 资源（**/v1/users/:username**）     |
-| -------------------------------- | ----------------------------------------- | -------------------------- |
-| GET                              | 获取一个 Collection 下所有的 Member 信息  | 获取一个 Member 的状态表征 |
-| POST                             | 在 Collection 中新建一个 Member           | 没有这类操作               |
-| PUT                              | 用另外一个 Collection 替换这个 Collection | 更新一个 Member 的状态表征 |
-| DELETE                           | 删除整个 Collection，可以用来批量删除资源 | 删除这个 Member            |
+
+| HTTP 方法 | Collection 资源（**/v1/users**）          | Ember 资源（**/v1/users/:username**） |
+| --------- | ----------------------------------------- | ------------------------------------- |
+| GET       | 获取一个 Collection 下所有的 Member 信息  | 获取一个 Member 的状态表征            |
+| POST      | 在 Collection 中新建一个 Member           | 没有这类操作                          |
+| PUT       | 用另外一个 Collection 替换这个 Collection | 更新一个 Member 的状态表征            |
+| DELETE    | 删除整个 Collection，可以用来批量删除资源 | 删除这个 Member                       |
 
 提示：Collection 代表资源集合，Ember 代表特定的资源。
 
 下面是一个具体的映射例子：
 
-| HTTP 方法 | 行为               | URI        | 示例说明               |
-| ------------- | ---------------------- | -------------- | -------------------------- |
-| GET           | 获取资源列表           | `/users`       | 获取用户列表               |
-| GET           | 获取一个具体的资源表述 | `/users/colin` | 获取`colin`用户的详细信息 |
-| POST          | 创建一个新的资源       | `/users`       | 创建一个新的用户           |
-| PUT           | 更新一个资源           | `/users/colin` | 更新用户名为`colin`的用户 |
-| DELET         | 删除服务器上的一个资源 | `/users/colin` | 删除用户名为`colin`的用户 |
+
+| HTTP 方法 | 行为                   | URI            | 示例说明                  |
+| --------- | ---------------------- | -------------- | ------------------------- |
+| GET       | 获取资源列表           | `/users`       | 获取用户列表              |
+| GET       | 获取一个具体的资源表述 | `/users/colin` | 获取`colin`用户的详细信息 |
+| POST      | 创建一个新的资源       | `/users`       | 创建一个新的用户          |
+| PUT       | 更新一个资源           | `/users/colin` | 更新用户名为`colin`的用户 |
+| DELET     | 删除服务器上的一个资源 | `/users/colin` | 删除用户名为`colin`的用户 |
 
 `GET`、`PUT`、`POST`、`DELETE` 是 RESTful API 最常用的 HTTP 请求方法。HTTP 还提供了另外 3 种请求方法，这些方法不经常使用，这里也列举出来供你参考：
 
-| HTTP 方法 | Collection 资源（/v1/users） | Ember 资源（/v1/users/:username）                                      |
-| ---------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| PATCH                        | 整个 Collection 进行部分更新，通常用于更新 Collection 的某些属性或字段 | 获取一个 Member 的元信息                                       |
-| HEAD                         | 获取一个 Collection 的元信息，但不需要获取实际资源的内容               | 获取 Member 的元信息，但不需要获取实际资源的内容               |
-| OPTIONS                      | 获取整个 Collection 支持的通信选项，比如支持的 HTTP 方法、请求头等信息 | 获取 Member 支持的通信选项，包括支持的 HTTP 方法、请求头等信息 |
+
+| HTTP 方法 | Collection 资源（/v1/users）                                           | Ember 资源（/v1/users/:username）                              |
+| --------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| PATCH     | 整个 Collection 进行部分更新，通常用于更新 Collection 的某些属性或字段 | 获取一个 Member 的元信息                                       |
+| HEAD      | 获取一个 Collection 的元信息，但不需要获取实际资源的内容               | 获取 Member 的元信息，但不需要获取实际资源的内容               |
+| OPTIONS   | 获取整个 Collection 支持的通信选项，比如支持的 HTTP 方法、请求头等信息 | 获取 Member 支持的通信选项，包括支持的 HTTP 方法、请求头等信息 |
 
 > 提示：OPTIONS 请求方法通常用于跨域请求时的预检请求。
 
@@ -105,15 +109,16 @@ DELETE /gists/:id/star # github unstar action
 
 使用不同 HTTP 方法时，资源操作的安全性和幂等性对照见下表：
 
+
 | HTTP 方法 | 是否安全 | 是否幂等 |
-| ------------- | ------------ | ------------ |
-| GET           | 是           | 是           |
-| POST          | 否           | 否           |
-| PUT           | 否           | 是           |
-| DELETE        | 否           | 是           |
-| PATCH         | 否           | 是           |
-| HEAD          | 是           | 是           |
-| OPTIONS       | 是           | 是           |
+| --------- | -------- | -------- |
+| GET       | 是       | 是       |
+| POST      | 否       | 否       |
+| PUT       | 否       | 是       |
+| DELETE    | 否       | 是       |
+| PATCH     | 否       | 是       |
+| HEAD      | 是       | 是       |
+| OPTIONS   | 是       | 是       |
 
 在使用 HTTP 方法的时候，有以下两点需要你注意：
 
@@ -143,6 +148,7 @@ HTTP 请求参数，可以视情况设置在以下位置：
 - Cookie：Cookie 是存储在客户端的一小段文本信息，会随着每次请求被发送到服务器。Cookie 用于在客户端和服务器之间保持状态，通常用于会话管理、用户认证等。
 
 下表是不同 HTTP 请求方法所支持的请求参数的设置位置：
+
 
 | 请求方法 | 参数位置                                                                                                                                                           |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
